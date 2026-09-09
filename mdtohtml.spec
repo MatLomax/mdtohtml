@@ -10,6 +10,7 @@ executable, which the frozen binary reads at runtime
 dropping a ``.css`` file into that directory with no rebuild.
 """
 
+import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_submodules
@@ -66,8 +67,10 @@ exe = EXE(
     name="mdtohtml",
     debug=False,
     bootloader_ignore_signals=False,
-    # Strip symbol tables to shrink the binary (effective on Linux/macOS).
-    strip=True,
+    # Strip symbol tables to shrink the binary on Linux/macOS. Never strip on
+    # Windows: PyInstaller's strip corrupts the bundled ``python3xx.dll`` and
+    # the frozen executable then fails to load the Python DLL at runtime.
+    strip=sys.platform != "win32",
     # UPX is not used: PyInstaller disables it on Linux/macOS, and it is left
     # off on Windows to avoid antivirus false positives.
     upx=False,
