@@ -25,12 +25,6 @@ jobs:
       - name: Install project and PyInstaller
         run: pip install -e . pyinstaller
 
-      # UPX is installed only on Linux; the spec's upx=True then compresses the
-      # binary opportunistically. Windows is skipped to avoid AV false positives.
-      - name: Install UPX (Linux)
-        if: runner.os != 'Windows'
-        run: sudo apt-get update && sudo apt-get install -y upx-ucl
-
       - name: Build binary
         run: pyinstaller --clean --noconfirm mdtohtml.spec
 

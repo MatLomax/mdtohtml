@@ -66,11 +66,11 @@ exe = EXE(
     name="mdtohtml",
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
-    # UPX is applied opportunistically: PyInstaller compresses only when the
-    # ``upx`` tool is present on PATH (Linux CI installs it; Windows does not,
-    # to avoid antivirus false positives), and silently skips it otherwise.
-    upx=True,
+    # Strip symbol tables to shrink the binary (effective on Linux/macOS).
+    strip=True,
+    # UPX is not used: PyInstaller disables it on Linux/macOS, and it is left
+    # off on Windows to avoid antivirus false positives.
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     console=True,
