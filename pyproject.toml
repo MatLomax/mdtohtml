@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mdtohtml"
+dynamic = ["version"]
+description = "Self-contained Obsidian-compatible Markdown to styled HTML converter with client-side KaTeX."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Mathieu Lomax" }]
+keywords = ["markdown", "html", "converter", "katex", "obsidian", "cli", "pyinstaller"]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Text Processing :: Markup :: Markdown",
+    "Topic :: Text Processing :: Markup :: HTML",
+]
+dependencies = [
+    "markdown>=3.5",
+    "pymdown-extensions>=10",
+    "nh3",
+]
+
+[project.optional-dependencies]
+build = [
+    "pyinstaller>=6",
+]
+
+[project.urls]
+Homepage = "https://github.com/MatLomax/mdtohtml"
+Repository = "https://github.com/MatLomax/mdtohtml"
+Issues = "https://github.com/MatLomax/mdtohtml/issues"
+
+[project.scripts]
+mdtohtml = "mdtohtml.cli:main"
+
+[tool.setuptools]
+packages = ["mdtohtml"]
+
+[tool.setuptools.dynamic]
+version = { attr = "mdtohtml.__version__" }
+
+[tool.setuptools.package-data]
+mdtohtml = ["themes/*.css", "katex/*"]

@@ -1,0 +1,11 @@
+{
+  "name": "mdtohtml",
+  "private": true,
+  "description": "Dev-only manifest: provides the KaTeX npm package as a source for scripts/build_katex_assets.py, which vendors a self-contained KaTeX bundle into katex/. Not used at build or run time by the mdtohtml CLI itself.",
+  "scripts": {
+    "build:katex": "python scripts/build_katex_assets.py"
+  },
+  "devDependencies": {
+    "katex": "^0.16.42"
+  }
+}

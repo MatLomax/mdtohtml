@@ -1,0 +1,138 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install project and PyInstaller
+        run: pip install -e . pyinstaller
+
+      # UPX is installed only on Linux; the spec's upx=True then compresses the
+      # binary opportunistically. Windows is skipped to avoid AV false positives.
+      - name: Install UPX (Linux)
+        if: runner.os != 'Windows'
+        run: sudo apt-get update && sudo apt-get install -y upx-ucl
+
+      - name: Build binary
+        run: pyinstaller --clean --noconfirm mdtohtml.spec
+
+      # ---- Smoke tests (Linux/macOS shells) ----
+      - name: Smoke test (bash)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN=dist/mdtohtml
+          printf '# T\n\n$x^2$ and $$y=1$$\n' > math.md
+          "$BIN" math.md --themes-dir mdtohtml/themes -o math.html
+          grep -q 'renderMathInElement' math.html
+          grep -q 'data:font/woff2;base64' math.html
+          echo "math doc OK (KaTeX bundle inlined)"
+
+          printf '# P\n\nplain\n' > plain.md
+          "$BIN" plain.md --themes-dir mdtohtml/themes -o plain.html
+          if grep -q 'renderMathInElement' plain.html; then
+            echo "ERROR: plain doc unexpectedly carries KaTeX" >&2; exit 1
+          fi
+          if grep -q 'data:font' plain.html; then
+            echo "ERROR: plain doc unexpectedly carries fonts" >&2; exit 1
+          fi
+          echo "plain doc OK (zero KaTeX bytes)"
+
+      # ---- Smoke tests (Windows PowerShell) ----
+      - name: Smoke test (pwsh)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $bin = "dist/mdtohtml.exe"
+          "# T`n`n`$x^2`$ and `$`$y=1`$`$`n" | Set-Content -NoNewline math.md
+          & $bin math.md --themes-dir mdtohtml/themes -o math.html
+          if (-not (Select-String -Path math.html -Pattern 'renderMathInElement' -Quiet)) {
+            Write-Error "math doc missing renderMathInElement"
+          }
+          if (-not (Select-String -Path math.html -Pattern 'data:font/woff2;base64' -SimpleMatch -Quiet)) {
+            Write-Error "math doc missing inlined KaTeX fonts"
+          }
+          Write-Host "math doc OK (KaTeX bundle inlined)"
+
+          "# P`n`nplain`n" | Set-Content -NoNewline plain.md
+          & $bin plain.md --themes-dir mdtohtml/themes -o plain.html
+          if (Select-String -Path plain.html -Pattern 'renderMathInElement' -Quiet) {
+            Write-Error "plain doc unexpectedly carries KaTeX"
+          }
+          if (Select-String -Path plain.html -Pattern 'data:font' -SimpleMatch -Quiet) {
+            Write-Error "plain doc unexpectedly carries fonts"
+          }
+          Write-Host "plain doc OK (zero KaTeX bytes)"
+
+      - name: Package release zip (bash)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGE=dist/release-stage
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          cp dist/mdtohtml "$STAGE/"
+          cp -r mdtohtml/themes "$STAGE/themes"
+          ( cd "$STAGE" && zip -qr "../mdtohtml-linux-x86_64.zip" . )
+          rm -rf "$STAGE"
+
+      - name: Package release zip (pwsh)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $stage = "dist/release-stage"
+          Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $stage | Out-Null
+          Copy-Item "dist/mdtohtml.exe" "$stage/"
+          Copy-Item -Recurse "mdtohtml/themes" "$stage/themes"
+          Compress-Archive -Path "$stage/*" -DestinationPath "dist/mdtohtml-windows-x86_64.zip" -Force
+          Remove-Item -Recurse -Force $stage
+
+      - name: Upload release zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdtohtml-${{ matrix.os }}
+          path: dist/mdtohtml-*.zip
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all release zips
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: mdtohtml-*
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/mdtohtml-*.zip
+          generate_release_notes: true

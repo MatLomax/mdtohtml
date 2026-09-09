@@ -1,0 +1,853 @@
+/* Dark Theme -- Deep, high-contrast dark mode with violet accents
+ * Font pairing: Outfit (headings) + Inter (body)
+ */
+
+/* @section: base */
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,700;1,400&family=Outfit:wght@500;600;700&display=swap');
+
+html {
+    font-size: 11pt;
+    line-height: 1.6;
+}
+
+body {
+    font-family: "Inter", system-ui, sans-serif;
+    color: #e2e8f0;
+    background: #0d1117;
+    margin: 0;
+    padding: 0;
+}
+
+/* @section: headings */
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Outfit", system-ui, sans-serif;
+    margin-top: 1.3em;
+    margin-bottom: 0.5em;
+    letter-spacing: -0.01em;
+}
+
+h1 {
+    font-size: 19pt;
+    font-weight: 700;
+    color: #f1f5f9;
+    border-bottom: 2.5pt solid #7c3aed;
+    padding-bottom: 6pt;
+    padding-left: 2pt;
+    margin-top: 0;
+    background: linear-gradient(90deg, rgba(124, 58, 237, 0.08), transparent);
+}
+
+h2 {
+    font-size: 13.5pt;
+    font-weight: 600;
+    color: #e2e8f0;
+    border-left: 3.5pt solid #8b5cf6;
+    padding-left: 10pt;
+    padding-bottom: 2pt;
+    border-bottom: none;
+}
+
+h3 {
+    font-size: 11.5pt;
+    font-weight: 600;
+    color: #c4b5fd;
+}
+
+h4 {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #a78bfa;
+}
+
+h5 {
+    font-size: 10.5pt;
+    font-weight: 600;
+    color: #9d80f0;
+}
+
+h6 {
+    font-size: 10pt;
+    font-weight: 500;
+    color: #7c6db0;
+    font-style: italic;
+}
+
+/* @section: paragraph */
+p {
+    margin: 0.5em 0;
+    orphans: 3;
+    widows: 3;
+}
+
+/* @section: inline */
+strong {
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+li strong:first-child {
+    color: #c4b5fd;
+}
+
+em {
+    font-style: italic;
+}
+
+del {
+    text-decoration: line-through;
+    color: #6b7280;
+}
+
+mark {
+    background: rgba(139, 92, 246, 0.25);
+    color: #e2e8f0;
+    padding: 1pt 3pt;
+    border-radius: 2pt;
+}
+
+/* @section: inline-code */
+code {
+    font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.88em;
+    background: #1e293b;
+    color: #c4b5fd;
+    padding: 1.5pt 5pt;
+    border-radius: 4pt;
+    border: 0.5pt solid #334155;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: inherit;
+    color: inherit;
+}
+
+/* @section: links */
+a {
+    color: #a78bfa;
+    text-decoration: underline;
+    text-decoration-color: rgba(167, 139, 250, 0.4);
+    text-underline-offset: 2pt;
+}
+
+a:hover {
+    color: #c4b5fd;
+    text-decoration-color: #a78bfa;
+}
+
+/* @section: lists */
+ul, ol {
+    margin: 0.5em 0;
+    padding-left: 1.8em;
+}
+
+li {
+    margin-bottom: 0.3em;
+}
+
+li > ul,
+li > ol {
+    margin-top: 0.2em;
+    margin-bottom: 0.2em;
+}
+
+/* @section: task-list */
+.task-list-item {
+    list-style-type: none;
+    margin-left: -1.4em;
+    padding-left: 1.6em;
+    text-indent: -1.6em;
+}
+
+.task-list-item input[type="checkbox"] {
+    display: none;
+}
+
+.task-list-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid #8b5cf6;
+    border-radius: 3px;
+    margin-right: 0.5em;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+}
+
+input[type="checkbox"][checked] + .task-list-indicator {
+    background: #8b5cf6;
+    border-color: #8b5cf6;
+}
+
+/* @section: blockquotes */
+blockquote {
+    border-left: 3pt solid #6d28d9;
+    background: rgba(109, 40, 217, 0.08);
+    margin: 0.8em 0;
+    padding: 8pt 14pt;
+    color: #c4b5fd;
+}
+
+blockquote blockquote {
+    margin: 0.5em 0;
+    border-left-color: #4c1d95;
+    background: rgba(76, 29, 149, 0.1);
+}
+
+blockquote p {
+    margin: 0.3em 0;
+}
+
+/* @section: callouts */
+.admonition {
+    border-left: 4pt solid #8b5cf6;
+    padding: 10pt 14pt;
+    margin: 1em 0;
+    border-radius: 0 6pt 6pt 0;
+    background: #161b22;
+    page-break-inside: avoid;
+}
+
+.admonition-title {
+    font-weight: 700;
+    margin-bottom: 0.3em;
+    font-size: 0.95em;
+}
+
+.admonition p {
+    margin: 0.3em 0;
+}
+
+/* @section: callout-note */
+.admonition.note {
+    border-left-color: #60a5fa;
+    background: rgba(96, 165, 250, 0.08);
+}
+
+.admonition.note .admonition-title {
+    color: #93c5fd;
+}
+
+/* @section: callout-abstract */
+.admonition.abstract {
+    border-left-color: #67e8f9;
+    background: rgba(103, 232, 249, 0.06);
+}
+
+.admonition.abstract .admonition-title {
+    color: #a5f3fc;
+}
+
+/* @section: callout-info */
+.admonition.info {
+    border-left-color: #22d3ee;
+    background: rgba(34, 211, 238, 0.06);
+}
+
+.admonition.info .admonition-title {
+    color: #67e8f9;
+}
+
+/* @section: callout-todo */
+.admonition.todo {
+    border-left-color: #818cf8;
+    background: rgba(129, 140, 248, 0.08);
+}
+
+.admonition.todo .admonition-title {
+    color: #a5b4fc;
+}
+
+/* @section: callout-tip */
+.admonition.tip {
+    border-left-color: #34d399;
+    background: rgba(52, 211, 153, 0.06);
+}
+
+.admonition.tip .admonition-title {
+    color: #6ee7b7;
+}
+
+/* @section: callout-success */
+.admonition.success {
+    border-left-color: #22c55e;
+    background: rgba(34, 197, 94, 0.06);
+}
+
+.admonition.success .admonition-title {
+    color: #4ade80;
+}
+
+/* @section: callout-question */
+.admonition.question {
+    border-left-color: #a3e635;
+    background: rgba(163, 230, 53, 0.06);
+}
+
+.admonition.question .admonition-title {
+    color: #bef264;
+}
+
+/* @section: callout-warning */
+.admonition.warning {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.06);
+}
+
+.admonition.warning .admonition-title {
+    color: #fbbf24;
+}
+
+/* @section: callout-important */
+.admonition.important {
+    border-left-color: #f97316;
+    background: rgba(249, 115, 22, 0.06);
+}
+
+.admonition.important .admonition-title {
+    color: #fb923c;
+}
+
+/* @section: callout-failure */
+.admonition.failure {
+    border-left-color: #f87171;
+    background: rgba(248, 113, 113, 0.06);
+}
+
+.admonition.failure .admonition-title {
+    color: #fca5a5;
+}
+
+/* @section: callout-danger */
+.admonition.danger {
+    border-left-color: #ef4444;
+    background: rgba(239, 68, 68, 0.06);
+}
+
+.admonition.danger .admonition-title {
+    color: #f87171;
+}
+
+/* @section: callout-bug */
+.admonition.bug {
+    border-left-color: #f472b6;
+    background: rgba(244, 114, 182, 0.06);
+}
+
+.admonition.bug .admonition-title {
+    color: #f9a8d4;
+}
+
+/* @section: callout-example */
+.admonition.example {
+    border-left-color: #a78bfa;
+    background: rgba(167, 139, 250, 0.08);
+}
+
+.admonition.example .admonition-title {
+    color: #c4b5fd;
+}
+
+/* @section: callout-quote */
+.admonition.quote {
+    border-left-color: #9ca3af;
+    background: rgba(156, 163, 175, 0.06);
+}
+
+.admonition.quote .admonition-title {
+    color: #d1d5db;
+}
+
+/* @section: code-blocks */
+pre {
+    background: #161b22;
+    border: 0.75pt solid #30363d;
+    border-radius: 6pt;
+    padding: 12pt 14pt;
+    margin: 0.8em 0;
+    overflow-x: auto;
+    font-size: 9.5pt;
+    line-height: 1.5;
+    page-break-inside: avoid;
+}
+
+pre code {
+    font-family: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    color: #e2e8f0;
+}
+
+.highlight {
+    margin: 0.8em 0;
+}
+
+.highlight pre {
+    margin: 0;
+}
+
+/* Pygments token classes -- vivid dark palette */
+.highlight .k,
+.highlight .kn,
+.highlight .kd,
+.highlight .kc {
+    color: #c084fc;
+    font-weight: 700;
+}
+
+.highlight .s,
+.highlight .s1,
+.highlight .s2,
+.highlight .sa,
+.highlight .sb,
+.highlight .sc,
+.highlight .se {
+    color: #86efac;
+}
+
+.highlight .c,
+.highlight .c1,
+.highlight .cm,
+.highlight .ch,
+.highlight .cs {
+    color: #6b7280;
+    font-style: italic;
+}
+
+.highlight .n {
+    color: #e2e8f0;
+}
+
+.highlight .o,
+.highlight .ow {
+    color: #67e8f9;
+}
+
+.highlight .p {
+    color: #94a3b8;
+}
+
+.highlight .mi,
+.highlight .mf,
+.highlight .mh,
+.highlight .mo {
+    color: #fb923c;
+}
+
+.highlight .nb,
+.highlight .bp {
+    color: #67e8f9;
+}
+
+.highlight .nf,
+.highlight .fm {
+    color: #93c5fd;
+    font-weight: 600;
+}
+
+.highlight .nc {
+    color: #c4b5fd;
+    font-weight: 700;
+}
+
+.highlight .nd {
+    color: #fbbf24;
+}
+
+.highlight .ni {
+    color: #94a3b8;
+}
+
+.highlight .ne {
+    color: #f87171;
+    font-weight: 700;
+}
+
+.highlight .nn {
+    color: #67e8f9;
+}
+
+.highlight .nt {
+    color: #f472b6;
+    font-weight: 600;
+}
+
+.highlight .na {
+    color: #a78bfa;
+}
+
+.highlight .nv,
+.highlight .vi,
+.highlight .vm {
+    color: #7dd3fc;
+}
+
+/* @section: math */
+.katex {
+    font-size: 1.05em;
+    color: #e2e8f0;
+}
+
+.katex-display {
+    display: block;
+    text-align: center;
+    margin: 0.8em 0;
+}
+
+.katex-display > .katex {
+    font-size: 1.1em;
+}
+
+/* @section: tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8em 0;
+    font-size: 10pt;
+    border-radius: 6pt;
+    overflow: hidden;
+}
+
+thead {
+    display: table-header-group;
+}
+
+th {
+    background: #1e1b4b;
+    color: #e0e7ff;
+    font-weight: 700;
+    text-align: left;
+    padding: 7pt 8pt;
+    border: none;
+    border-bottom: 2pt solid #4c1d95;
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 10pt;
+}
+
+tr {
+    break-inside: avoid;
+}
+
+td {
+    padding: 6pt 8pt;
+    border-bottom: 0.5pt solid #30363d;
+    vertical-align: top;
+    color: #e2e8f0;
+}
+
+tr:nth-child(even) td {
+    background: rgba(139, 92, 246, 0.04);
+}
+
+/* @section: footnotes */
+.footnote-ref {
+    font-size: 0.75em;
+    vertical-align: super;
+    line-height: 0;
+    text-decoration: none;
+}
+
+.footnote-ref a {
+    text-decoration: none;
+    color: #a78bfa;
+}
+
+.footnotes {
+    margin-top: 2em;
+    padding-top: 0.8em;
+    border-top: 0.75pt solid #30363d;
+    font-size: 9.5pt;
+    color: #94a3b8;
+}
+
+.footnotes ol {
+    padding-left: 1.5em;
+}
+
+.footnotes li {
+    margin-bottom: 0.4em;
+}
+
+.footnotes hr {
+    display: none;
+}
+
+.footnote-backref {
+    text-decoration: none;
+    color: #6d28d9;
+    margin-left: 0.3em;
+}
+
+/* @section: images */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0.8em 0;
+    border-radius: 4pt;
+}
+
+figcaption {
+    font-size: 9.5pt;
+    color: #94a3b8;
+    text-align: center;
+    margin-top: 4pt;
+    font-style: italic;
+}
+
+figure {
+    margin: 1em 0;
+    padding: 0;
+}
+
+/* @section: hr */
+hr {
+    border: none;
+    height: 2pt;
+    background: linear-gradient(to right, #7c3aed, #4c1d95, transparent);
+    margin: 1.4em 0;
+}
+
+.section-break {
+    page-break-before: always;
+    page: section-start;
+}
+
+/* @section: toc */
+/* #toc is fixed so the sidebar is its own scroll container: the `--toc`
+   scrollspy keeps the active link visible by adjusting this element's
+   scrollTop, which needs somewhere to scroll. Omitting this section leaves the
+   nav in the document flow: the scrollspy will not touch the page, but there is
+   no sidebar and the contents list simply piles up above the text. */
+#toc {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 17rem;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2rem 0 3rem;
+    background: #11151c;
+    border-right: 1px solid #232b36;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    z-index: 100;
+    scrollbar-width: thin;
+    scrollbar-color: #2c3542 transparent;
+}
+
+/* The scrollspy moves this rail on its own, so a chunky default scrollbar is a
+   permanently visible distraction rather than an occasional one. */
+#toc::-webkit-scrollbar {
+    width: 8px;
+}
+
+#toc::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#toc::-webkit-scrollbar-thumb {
+    background: #2c3542;
+    border: 2px solid #11151c;
+    border-radius: 4px;
+}
+
+#toc::-webkit-scrollbar-thumb:hover {
+    background: #3b4757;
+}
+
+/* Centre the text column in the space LEFT OVER beside the sidebar.
+   The gutter is PADDING on <body>, not a margin: `margin-left` here outranks
+   the theme's `margin: 20mm auto` (a :has() selector carries id specificity),
+   which pinned the column against the sidebar and dumped all the slack on the
+   right — 705px of it at 1920 wide. Padding keeps <body> full width, so
+   `margin: auto` on <main> has something to centre within. */
+body:has(#toc) {
+    max-width: none;
+    margin: 0;
+    padding: 0 0 0 17rem;
+}
+
+/* No box-sizing here on purpose: the theme sizes the unwrapped <body> the same
+   way, so the measure stays identical with and without the sidebar. */
+body:has(#toc) > main {
+    max-width: 210mm;
+    margin: 20mm auto;
+    padding: 0 20mm;
+}
+
+.toc-title {
+    font-family: "Outfit", system-ui, sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #6b7688;
+    margin: 0 1.25rem 0.9rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid #232b36;
+}
+
+#toc ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#toc li {
+    margin: 0;
+}
+
+#toc a {
+    display: block;
+    padding: 0.32rem 1.25rem;
+    border-left: 2px solid transparent;
+    color: #8b95a5;
+    text-decoration: none;
+    transition:
+        color 0.12s ease,
+        background-color 0.12s ease,
+        border-color 0.12s ease;
+}
+
+/* Depth reads from indentation and weight rather than bullets or nested
+   borders, so the hover and active highlights can run the full width. */
+#toc > ul > li > a {
+    color: #aab4c4;
+}
+
+#toc ul ul a {
+    padding-left: 2.1rem;
+    font-size: 0.78rem;
+}
+
+#toc ul ul ul a {
+    padding-left: 2.95rem;
+}
+
+#toc a:hover {
+    background: rgba(124, 58, 237, 0.1);
+    color: #e2e8f0;
+}
+
+/* The scrollspy's marker for the heading in view: a left rule and a tint.
+   Nothing moves, so a highlight sweeping past never shifts the list under the
+   pointer. */
+#toc a.active {
+    background: rgba(124, 58, 237, 0.16);
+    border-left-color: #7c3aed;
+    color: #c4b5fd;
+    font-weight: 600;
+}
+
+/* In PDF there is no scrolling and no active heading, so the sidebar becomes a
+   proper contents page on its own sheet. Colours stay dark because the theme
+   prints its background. */
+@media print {
+    #toc {
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        border-right: none;
+        background: none;
+        padding: 0;
+        font-size: 1rem;
+        line-height: 1.6;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    body:has(#toc) {
+        margin: 0;
+        padding: 0;
+    }
+
+    body:has(#toc) > main {
+        max-width: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .toc-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        text-transform: none;
+        letter-spacing: normal;
+        color: #e2e8f0;
+        margin: 0 0 1rem;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
+    #toc a,
+    #toc ul ul a,
+    #toc ul ul ul a {
+        color: #e2e8f0;
+        padding: 0.2rem 0;
+        border-left: none;
+        font-size: 1rem;
+    }
+
+    #toc a:hover,
+    #toc a.active {
+        background: none;
+        font-weight: 400;
+    }
+}
+
+/* @section: page-layout */
+@page {
+    size: A4;
+    margin: 22mm 20mm 25mm 20mm;
+
+    @bottom-center {
+        content: string(section-title) " \2014  Page " counter(page) " of " counter(pages);
+        font-family: "Inter", system-ui, sans-serif;
+        font-size: 8.5pt;
+        color: #94a3b8;
+        padding-top: 6pt;
+    }
+}
+
+@page section-start {
+    counter-reset: page 1;
+}
+
+h1 {
+    string-set: section-title content();
+}
+
+/* @section: screen */
+@media screen {
+    body {
+        max-width: 210mm;
+        margin: 20mm auto;
+        padding: 0 20mm;
+    }
+}
+
+/* @section: print-media */
+@media print {
+    .no-print {
+        display: none;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background: #0d1117;
+        color: #e2e8f0;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    a {
+        color: #c4b5fd;
+        text-decoration: none;
+    }
+}
