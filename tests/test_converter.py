@@ -15,6 +15,7 @@ from mdtohtml.converter import (
     list_themes,
     load_theme_css,
     md_to_html,
+    preprocess_chips,
     preprocess_obsidian_callouts,
     preprocess_wikilinks,
     render_html,
@@ -788,5 +789,117 @@ class TestCodeProtectionRobustness:
         """A '# comment' inside a fence must not win as the document title."""
         md = "```bash\n# not the title\necho hi\n```\n\n# Real Title\n\nbody\n"
         assert extract_title(md) == "Real Title"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Inline chips (:key[label])
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestPreprocessChips:
+    def test_palette_key_becomes_chip_span(self) -> None:
+        result = preprocess_chips(":blue[North]")
+        assert result == '<span class="pchip blue">North</span>'
+
+    def test_non_palette_key_left_literal(self) -> None:
+        assert preprocess_chips(":other[x]") == ":other[x]"
+
+    def test_ordinary_colon_text_untouched(self) -> None:
+        md = "Ratio 3:1 and time 10:30 stay as-is."
+        assert preprocess_chips(md) == md
+
+    def test_key_glued_to_preceding_word_left_literal(self) -> None:
+        # A palette key must start a fresh token; glued to a word (or another
+        # colon) it is ordinary prose, not a chip.
+        for md in ("code:red[1]", "a:blue[x]", "path::green[y]"):
+            assert preprocess_chips(md) == md
+
+    def test_multiple_chips(self) -> None:
+        result = preprocess_chips(":blue[North] and :green[South]")
+        assert result == (
+            '<span class="pchip blue">North</span> and '
+            '<span class="pchip green">South</span>'
+        )
+
+    def test_chip_in_inline_code_untouched(self) -> None:
+        md = "Use `:blue[North]` to tag a row."
+        result = preprocess_chips(md)
+        assert ":blue[North]" in result
+        assert "pchip" not in result
+
+    def test_chip_in_fenced_code_untouched(self) -> None:
+        md = "```\n:blue[North]\n```"
+        result = preprocess_chips(md)
+        assert ":blue[North]" in result
+        assert "pchip" not in result
+
+    def test_all_eleven_palette_keys(self) -> None:
+        keys = [
+            "blue", "green", "amber", "purple", "teal", "pink",
+            "lime", "gold", "slate", "red", "gray",
+        ]
+        for key in keys:
+            result = preprocess_chips(f":{key}[label]")
+            assert result == f'<span class="pchip {key}">label</span>'
+
+
+class TestMdToHtmlChips:
+    def test_chip_renders_to_span_in_html(self) -> None:
+        html = md_to_html(":blue[North]")
+        assert '<span class="pchip blue">North</span>' in html
+
+    def test_hostile_chip_label_is_sanitised(self) -> None:
+        # A chip label carrying an XSS payload flows through nh3 like any other
+        # markup: the event handler is stripped, leaving inert output.
+        html = md_to_html(":blue[<img src=x onerror=alert(1)>]")
+        assert "onerror" not in html
+        assert "alert(1)" not in html
+        # The chip wrapper itself is intact; only the payload is neutralised.
+        assert 'class="pchip blue"' in html
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Report theme
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestReportTheme:
+    """The shipped ``report`` drop-in theme and its chip/palette surface."""
+
+    def test_report_theme_is_discoverable(self) -> None:
+        assert "report" in list_themes()
+
+    def test_report_css_carries_chip_and_palette_rules(self) -> None:
+        css = load_theme_css("report")
+        assert ".pchip" in css
+        # Every one of the eleven palette keys has a chip rule.
+        for key in (
+            "blue", "green", "amber", "purple", "teal", "pink",
+            "lime", "gold", "slate", "red", "gray",
+        ):
+            assert f".pchip.{key}" in css
+        # A representative palette fill value from report_template's PALETTE.
+        assert "#d7e6f2" in css
+
+    def test_report_css_frames_mermaid_not_bare_svg(self) -> None:
+        css = load_theme_css("report")
+        assert ".mermaid-diagram" in css
+        # A bare ``svg {`` rule would corrupt KaTeX's inline radicals.
+        assert "\nsvg {" not in css
+        assert "\nsvg{" not in css
+
+    def test_convert_with_report_theme_succeeds(self) -> None:
+        out = convert("# Doc\n\nBody with :teal[tag].\n", "report")
+        assert "<!DOCTYPE html>" in out
+        assert '<span class="pchip teal">tag</span>' in out
+
+    def test_math_and_mermaid_render_under_report_theme(self) -> None:
+        doc = (
+            "# Title\n\nInline $x^2$ here.\n\n"
+            "```mermaid\ngraph TD; A-->B\n```\n"
+        )
+        out = convert(doc, "report")
+        assert 'class="katex"' in out
+        assert 'class="mermaid-diagram"' in out
 
 

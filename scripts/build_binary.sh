@@ -45,6 +45,10 @@ rm -rf "$STAGE"
 mkdir -p "$STAGE"
 cp "$BIN" "$STAGE/"
 cp -r "$ROOT/mdtohtml/themes" "$STAGE/themes"
+# Ship the license notices as visible files beside the binary so the bundled
+# third-party notices reach anyone who downloads the release zip.
+cp "$ROOT/LICENSE" "$STAGE/"
+cp "$ROOT/THIRD-PARTY-LICENSES" "$STAGE/"
 
 # Name the zip per the host OS/arch. The Windows executable is the .exe
 # special case; otherwise derive the OS token from uname (Linux->linux,

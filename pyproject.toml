@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Self-contained Obsidian-compatible Markdown to styled HTML converter with pre-rendered KaTeX math and mermaid diagrams."
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "THIRD-PARTY-LICENSES"]
 authors = [{ name = "Mathieu Lomax" }]
 keywords = ["markdown", "html", "converter", "katex", "mermaid", "obsidian", "cli", "pyinstaller"]
 requires-python = ">=3.10"

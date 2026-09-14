@@ -39,6 +39,11 @@ hiddenimports += collect_submodules("mermaidx")
 
 datas = [
     (str(_ROOT / "mdtohtml" / "katex"), "katex"),
+    # Third-party license aggregate. The frozen binary carries it internally
+    # (at the bundle root) exactly as it carries the KaTeX license files inside
+    # katex/, so the bundled dependencies' notices travel with the executable
+    # even though the release zip ships only the binary and themes/.
+    (str(_ROOT / "THIRD-PARTY-LICENSES"), "."),
 ]
 # mermaidx reads assets/mermaid.js, assets/dom_shim.js and assets/fonts/*.ttf
 # relative to its package directory; collect_data_files preserves that layout.

@@ -83,6 +83,20 @@ class TestRenderSuccess:
         svg_id = re.search(r'<svg[^>]*\bid="([^"]+)"', out).group(1)
         assert f"#{svg_id}" in out
 
+    def test_rendered_svg_is_wrapped_in_frame_div(self) -> None:
+        # A successful diagram is framed so themes can border/scroll it and it
+        # is distinguishable from KaTeX's inline SVGs.
+        out = render_mermaid(FLOWCHART)
+        assert out.startswith('<div class="mermaid-diagram">')
+        assert out.endswith("</div>")
+        assert "<svg" in out
+
+    def test_degrade_path_is_not_wrapped_in_frame_div(self) -> None:
+        # The failure fragment keeps its own ``mermaid-error`` wrapper.
+        out = render_mermaid(MALFORMED)
+        assert 'class="mermaid-diagram"' not in out
+        assert "mermaid-error" in out
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # render_mermaid — theming

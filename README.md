@@ -15,7 +15,11 @@ into styled, standalone HTML.
   tables, footnotes, syntax highlighting, `~~del~~`, `==mark==`, and an
   optional table-of-contents sidebar.
 - **Themeable** via drop-in CSS files — add a theme without rebuilding
-  anything.
+  anything. Ships a `report` theme (a warm, AA-accessible, auto light/dark
+  visual system) alongside `default`, `dark`, and `print`.
+- **Coloured chips.** Inline `:blue[label]` syntax renders a categorical pill
+  (`<span class="pchip blue">`) in any of 11 palette colours, styled by the
+  `report` theme.
 - **Pre-rendered math.** LaTeX math is typeset to static markup at convert
   time by a bundled KaTeX; the output carries the KaTeX stylesheet and fonts
   (base64-inlined) but no JavaScript engine, and only when a document actually
@@ -90,6 +94,25 @@ Then `mdtohtml notes.md --theme mytheme -o out.html` uses it — no rebuild
 needed. A `--themes-dir` flag can also point at a themes folder kept
 elsewhere.
 
+The built-in `report` theme (`--theme report`) is a warm, AA-accessible
+visual system that auto-switches light/dark with the reader's
+`prefers-color-scheme`, styling headings, tables, callout cards, coloured
+chips, and framed diagrams as a cohesive report.
+
+### Chips
+
+Inline `:key[label]` renders a coloured category pill, where `key` is one of
+the 11 palette colours (`blue`, `green`, `amber`, `purple`, `teal`, `pink`,
+`lime`, `gold`, `slate`, `red`, `gray`):
+
+```markdown
+Status :green[passing] · :red[blocked] · :slate[deferred]
+```
+
+A colon that is not one of these keys, or one glued to a preceding word
+(`code:red[1]`), is left as ordinary text. Chips carry a `pchip` class and are
+styled by the `report` theme; under other themes the label shows as plain text.
+
 ## Math
 
 Math is written as standard LaTeX delimiters (`$inline$` and `$$display$$`)
@@ -126,6 +149,35 @@ Diagrams render with the `dark` mermaid theme under the `dark` theme and the
 default palette otherwise. A diagram that fails to parse degrades to its
 original source shown as a code block with a visible note, so one bad diagram
 never breaks the document.
+
+## Third-party licenses
+
+mdtohtml is MIT-licensed and relies on several third-party components. The
+[`THIRD-PARTY-LICENSES`](THIRD-PARTY-LICENSES) aggregate collects the license
+and copyright notices for the components embedded in the frozen binary and the
+release zip that ships to users. The Python wheel embeds only KaTeX and declares
+the rest as ordinary pip dependencies, each installed with its own license
+notices. The aggregate covers:
+
+- [mermaidx](https://github.com/mohammadraziei/mermaidx) (MIT) and the bundled
+  [mermaid.js](https://github.com/mermaid-js/mermaid) 11.16.0 (MIT) diagram
+  engine.
+- [quickjs-ng](https://github.com/quickjs-ng/quickjs) (MIT) -- the JavaScript
+  engine behind both math and diagram rendering.
+- [resvg_py](https://github.com/baseplate-admin/resvg-py) (MIT), whose native
+  library statically links the [resvg](https://github.com/RazrFalcon/resvg) SVG
+  engine (dual `MIT OR Apache-2.0`; mdtohtml elects MIT). All of its bundled
+  Rust crates are permissively licensed -- none is MPL or copyleft.
+- DejaVu Sans fonts (Bitstream Vera license) bundled by mermaidx for text
+  metrics.
+- KaTeX code (MIT) and KaTeX fonts (SIL OFL 1.1), whose full texts also ship at
+  `mdtohtml/katex/LICENSE` and `mdtohtml/katex/OFL.txt`.
+- the Python-Markdown (BSD-3-Clause), pymdown-extensions (MIT), Pygments
+  (BSD-2-Clause), nh3 (MIT), and termaid (MIT) libraries.
+- the CPython runtime (PSF License) and the PyInstaller bootloader
+  (GPL-2.0-or-later with a bootloader exception permitting the frozen binary to
+  ship under mdtohtml's own terms), both embedded only in the frozen binary. See
+  [`THIRD-PARTY-LICENSES`](THIRD-PARTY-LICENSES) for the full texts.
 
 ## How it works
 
@@ -184,10 +236,10 @@ scripts/build_binary.sh
 `scripts/build_binary.sh` wipes `build/` and `dist/`, runs PyInstaller against
 `mdtohtml.spec` (onefile), and then assembles the release zip that ships to
 users: `dist/mdtohtml-linux-x86_64.zip` (or `dist/mdtohtml-windows-x86_64.zip`
-on Windows), containing the executable and a `themes/` folder side by side.
-Theme CSS is **not** baked into the executable — only the KaTeX and mermaid
-rendering assets (and the engines that drive them) are — so the `themes/`
-folder must travel with the binary.
+on Windows), containing the executable, a `themes/` folder, and the `LICENSE`
+and `THIRD-PARTY-LICENSES` files side by side. Theme CSS is **not** baked into
+the executable — only the KaTeX and mermaid rendering assets (and the engines
+that drive them) are — so the `themes/` folder must travel with the binary.
 
 The Linux binary is dynamically linked against the glibc of the machine that
 built it, so it runs on that glibc version or newer. It does not run on musl

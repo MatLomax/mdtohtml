@@ -53,10 +53,12 @@ _THEME_LIGHT = "default"
 def render_mermaid(source: str, *, dark: bool = False) -> str:
     """Render Mermaid *source* to embed-ready inline HTML.
 
-    On success returns the inline ``<svg>...</svg>`` produced by mermaid.js with
-    its load-bearing ``<style>`` blob intact. On ANY render error returns a
-    graceful-degrade fragment: the original source re-emitted as a fenced code
-    block plus a visible note. This function never raises to the caller.
+    On success returns the inline ``<svg>...</svg>`` produced by mermaid.js (with
+    its load-bearing ``<style>`` blob intact) wrapped in a
+    ``<div class="mermaid-diagram">`` frame themes can style. On ANY render error
+    returns a graceful-degrade fragment: the original source re-emitted as a
+    fenced code block plus a visible note. This function never raises to the
+    caller.
 
     Args:
         source: The raw Mermaid diagram source (the fenced block body).
@@ -77,7 +79,10 @@ def render_mermaid(source: str, *, dark: bool = False) -> str:
     if "<svg" not in svg:
         return _degrade_fragment(source, RuntimeError("renderer produced no SVG"))
 
-    return svg
+    # Wrap the diagram in a framing div so themes can border/scroll it and it is
+    # distinguishable from the inline ``<svg>`` KaTeX draws for radicals. The
+    # wrapper is trusted, post-``nh3.clean`` output alongside the SVG it holds.
+    return f'<div class="mermaid-diagram">{svg}</div>'
 
 
 def _degrade_fragment(source: str, error: BaseException) -> str:

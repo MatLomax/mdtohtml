@@ -1,0 +1,751 @@
+/* Report Theme -- Editorial, neutral report layout ported from the JJO report
+ * scaffold. Auto-switches light/dark via prefers-color-scheme (no toggle), pins
+ * an AA-safe light-red warning card, frames Mermaid diagrams, and ships the
+ * eleven-key categorical chip palette (:key[label] -> .pchip.<key>).
+ */
+
+/* @section: base */
+:root {
+    --paper: #f4f6f8;
+    --panel: #fff;
+    --ink: #1b1e24;
+    --ink-soft: #4a515c;
+    --ink-faint: #767e8b;
+    --line: #d9dee5;
+    --line-soft: #e7ebf0;
+    --accent: #b26a00;
+    --accent-soft: #f7ecd6;
+    --accent-line: #e6c78d;
+    --shadow: 0 1px 2px rgba(20, 24, 34, 0.06), 0 8px 26px rgba(20, 24, 34, 0.08);
+    --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --paper: #14171c;
+        --panel: #1b1f26;
+        --ink: #e9ecf1;
+        --ink-soft: #b3bac6;
+        --ink-faint: #838c99;
+        --line: #2c323b;
+        --line-soft: #242a32;
+        --accent: #e0a047;
+        --accent-soft: #2e2415;
+        --accent-line: #4a3a1c;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+}
+
+html {
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* @section: headings */
+h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+}
+
+h1 {
+    font-size: clamp(28px, 5vw, 42px);
+    line-height: 1.07;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+    margin: 0 0 18px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+}
+
+h2 {
+    font-size: clamp(20px, 3vw, 26px);
+    font-weight: 750;
+    margin: 48px 0 10px;
+}
+
+h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 30px 0 4px;
+}
+
+h4 {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 24px 0 4px;
+    color: var(--ink-soft);
+}
+
+h5 {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 20px 0 4px;
+    color: var(--ink-faint);
+}
+
+h6 {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 18px 0 4px;
+    color: var(--ink-faint);
+    font-style: italic;
+}
+
+/* @section: hero
+   The document has no eyebrow/lede markup, so the opening H1 and the paragraph
+   immediately after it are styled as the hero: a large title over an oversized
+   intro line. Only the FIRST paragraph after the H1 is treated as the lede. */
+h1 + p {
+    font-size: 17px;
+    color: var(--ink-soft);
+    max-width: 64ch;
+    margin: 0 0 8px;
+}
+
+/* @section: paragraph */
+p {
+    margin: 0.7em 0;
+}
+
+body > p,
+main > p,
+section > p {
+    max-width: 72ch;
+}
+
+/* @section: inline */
+strong {
+    font-weight: 700;
+    color: var(--ink);
+}
+
+em {
+    font-style: italic;
+}
+
+del {
+    text-decoration: line-through;
+    color: var(--ink-faint);
+}
+
+mark {
+    background: var(--accent-soft);
+    color: var(--ink);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+/* @section: inline-code */
+code {
+    font-family: var(--mono);
+    background: var(--line-soft);
+    color: var(--ink);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.86em;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    font-size: inherit;
+    color: inherit;
+}
+
+/* @section: links */
+a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-color: var(--accent-line);
+    text-underline-offset: 2px;
+}
+
+a:hover {
+    text-decoration-color: var(--accent);
+}
+
+/* @section: lists */
+ul, ol {
+    margin: 0.6em 0;
+    padding-left: 1.6em;
+}
+
+li {
+    margin-bottom: 0.3em;
+}
+
+li > ul,
+li > ol {
+    margin-top: 0.2em;
+    margin-bottom: 0.2em;
+}
+
+/* @section: task-list */
+.task-list-item {
+    list-style-type: none;
+    margin-left: -1.4em;
+    padding-left: 1.6em;
+    text-indent: -1.6em;
+}
+
+.task-list-item input[type="checkbox"] {
+    display: none;
+}
+
+.task-list-indicator {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    border: 1.5px solid var(--accent);
+    border-radius: 3px;
+    margin-right: 0.5em;
+    vertical-align: middle;
+    position: relative;
+    top: -1px;
+}
+
+input[type="checkbox"][checked] + .task-list-indicator {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+/* @section: blockquotes */
+blockquote {
+    border-left: 3px solid var(--accent-line);
+    background: var(--line-soft);
+    margin: 0.9em 0;
+    padding: 8px 16px;
+    border-radius: 0 8px 8px 0;
+    color: var(--ink-soft);
+}
+
+blockquote p {
+    margin: 0.3em 0;
+}
+
+/* @section: chips
+   The categorical palette, ported verbatim from report_template's PALETTE.
+   Chips carry a light ground with pinned dark ink, so they stay legible on any
+   background and need no dark-mode override. */
+.pchip {
+    display: inline-block;
+    font-size: 12px;
+    padding: 2px 9px;
+    border-radius: 20px;
+    border: 1px solid;
+    font-weight: 600;
+    white-space: nowrap;
+    line-height: 1.5;
+}
+
+.pchip.blue { background: #d7e6f2; border-color: #3f6f96; color: #1e3f5a; }
+.pchip.green { background: #dcecda; border-color: #4b7a45; color: #234420; }
+.pchip.amber { background: #fbe3cf; border-color: #c07a33; color: #6b3d12; }
+.pchip.purple { background: #e6dcf0; border-color: #7a5a9e; color: #412a5e; }
+.pchip.teal { background: #d2ecea; border-color: #3f8079; color: #1e463f; }
+.pchip.pink { background: #f4dce6; border-color: #a8496f; color: #5e2138; }
+.pchip.lime { background: #e6e7c6; border-color: #87872b; color: #4a4a12; }
+.pchip.gold { background: #f3ecc8; border-color: #a8912e; color: #574812; }
+.pchip.slate { background: #e4e7ec; border-color: #7c8492; color: #333a44; }
+.pchip.red { background: #f0d9d3; border-color: #b0432c; color: #5e2114; }
+.pchip.gray { background: #eceef2; border-color: #aab1bd; color: #333333; }
+
+/* @section: callouts
+   Obsidian callouts render as python-markdown admonitions
+   (``.admonition <type>`` + ``.admonition-title``). The base card mirrors
+   report_template's ``.note``; per-type accents colour the rule and title. */
+.admonition {
+    border-left: 4px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 18px;
+    margin: 20px 0;
+    border-radius: 0 8px 8px 0;
+    color: var(--ink);
+    page-break-inside: avoid;
+}
+
+.admonition-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: var(--accent);
+}
+
+.admonition p {
+    margin: 0.4em 0;
+}
+
+.admonition p:last-child {
+    margin-bottom: 0;
+}
+
+.admonition.note { border-left-color: #3f6f96; background: rgba(63, 111, 150, 0.1); }
+.admonition.note .admonition-title { color: #2f6394; }
+.admonition.abstract { border-left-color: #3f8079; background: rgba(63, 128, 121, 0.1); }
+.admonition.abstract .admonition-title { color: #2f7269; }
+.admonition.info { border-left-color: #3f8079; background: rgba(63, 128, 121, 0.1); }
+.admonition.info .admonition-title { color: #2f7269; }
+.admonition.todo { border-left-color: #7a5a9e; background: rgba(122, 90, 158, 0.1); }
+.admonition.todo .admonition-title { color: #6d4f8f; }
+.admonition.tip { border-left-color: #4b7a45; background: rgba(75, 122, 69, 0.1); }
+.admonition.tip .admonition-title { color: #3f6d39; }
+.admonition.success { border-left-color: #4b7a45; background: rgba(75, 122, 69, 0.1); }
+.admonition.success .admonition-title { color: #3f6d39; }
+.admonition.question { border-left-color: #87872b; background: rgba(135, 135, 43, 0.12); }
+.admonition.question .admonition-title { color: #6f6f22; }
+.admonition.example { border-left-color: #7a5a9e; background: rgba(122, 90, 158, 0.1); }
+.admonition.example .admonition-title { color: #6d4f8f; }
+.admonition.quote { border-left-color: #7c8492; background: rgba(124, 132, 146, 0.12); }
+.admonition.quote .admonition-title { color: #616977; }
+.admonition.bug { border-left-color: #a8496f; background: rgba(168, 73, 111, 0.1); }
+.admonition.bug .admonition-title { color: #973f62; }
+.admonition.important { border-left-color: #c07a33; background: rgba(192, 122, 51, 0.12); }
+.admonition.important .admonition-title { color: #a5661f; }
+
+/* The warn family pins a fixed light-red ground with AA-safe dark text so it
+   reads in every theme: the token --ink would go near-white in dark mode and
+   fail contrast on a light-red card. Pinned in BOTH modes (no dark override). */
+.admonition.warning,
+.admonition.failure,
+.admonition.danger {
+    border-left-color: #b0432c;
+    background: #f6e2dc;
+    color: #5e2114;
+}
+
+.admonition.warning .admonition-title,
+.admonition.failure .admonition-title,
+.admonition.danger .admonition-title {
+    color: #a53a22;
+}
+
+.admonition.warning strong,
+.admonition.failure strong,
+.admonition.danger strong {
+    color: #43160d;
+}
+
+.admonition.warning a,
+.admonition.failure a,
+.admonition.danger a {
+    color: #8a2f1c;
+    text-decoration-color: #cf9484;
+}
+
+.admonition.warning code,
+.admonition.failure code,
+.admonition.danger code {
+    background: #ecccc1;
+    color: #5e2114;
+    border: 0;
+}
+
+/* @section: code-blocks */
+pre {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 1em 0;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+    box-shadow: var(--shadow);
+    page-break-inside: avoid;
+}
+
+pre code {
+    font-family: var(--mono);
+    color: var(--ink);
+}
+
+.highlight {
+    margin: 1em 0;
+}
+
+.highlight pre {
+    margin: 0;
+}
+
+/* Pygments token classes -- light palette. Dark tones are overridden in the
+   prefers-color-scheme block below. */
+.highlight .k, .highlight .kn, .highlight .kd, .highlight .kc { color: #7a4a9a; font-weight: 700; }
+.highlight .s, .highlight .s1, .highlight .s2, .highlight .sa,
+.highlight .sb, .highlight .sc, .highlight .se { color: #3f6d39; }
+.highlight .c, .highlight .c1, .highlight .cm, .highlight .ch, .highlight .cs { color: #767e8b; font-style: italic; }
+.highlight .n { color: var(--ink); }
+.highlight .o, .highlight .ow { color: #3f8079; }
+.highlight .p { color: var(--ink-soft); }
+.highlight .mi, .highlight .mf, .highlight .mh, .highlight .mo { color: #a5661f; }
+.highlight .nb, .highlight .bp { color: #3f8079; }
+.highlight .nf, .highlight .fm { color: #2f6394; font-weight: 600; }
+.highlight .nc { color: #6d4f8f; font-weight: 700; }
+.highlight .nd { color: #a5661f; }
+.highlight .ni { color: var(--ink-soft); }
+.highlight .ne { color: #b0432c; font-weight: 700; }
+.highlight .nn { color: #3f8079; }
+.highlight .nt { color: #a8496f; font-weight: 600; }
+.highlight .na { color: #7a5a9e; }
+.highlight .nv, .highlight .vi, .highlight .vm { color: #2f6394; }
+
+/* Dark-mode syntax tokens: brighter tones that clear AA on the dark code panel. */
+@media (prefers-color-scheme: dark) {
+    .highlight .k, .highlight .kn, .highlight .kd, .highlight .kc { color: #c084fc; }
+    .highlight .s, .highlight .s1, .highlight .s2, .highlight .sa,
+    .highlight .sb, .highlight .sc, .highlight .se { color: #86efac; }
+    .highlight .c, .highlight .c1, .highlight .cm, .highlight .ch, .highlight .cs { color: #838c99; }
+    .highlight .o, .highlight .ow { color: #5eead4; }
+    .highlight .mi, .highlight .mf, .highlight .mh, .highlight .mo { color: #fb923c; }
+    .highlight .nb, .highlight .bp { color: #5eead4; }
+    .highlight .nf, .highlight .fm { color: #93c5fd; }
+    .highlight .nc { color: #c4b5fd; }
+    .highlight .nd { color: #fbbf24; }
+    .highlight .ne { color: #f87171; }
+    .highlight .nn { color: #5eead4; }
+    .highlight .nt { color: #f472b6; }
+    .highlight .na { color: #c4b5fd; }
+    .highlight .nv, .highlight .vi, .highlight .vm { color: #93c5fd; }
+}
+
+/* @section: math */
+.katex {
+    font-size: 1.05em;
+    color: var(--ink);
+}
+
+.katex-display {
+    display: block;
+    text-align: center;
+    margin: 1em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.katex-display > .katex {
+    font-size: 1.1em;
+}
+
+/* @section: mermaid
+   A framed diagram card. mermaid SVG is rendered with the LIGHT theme under
+   this report theme (only the ``dark`` theme flips it), so the card pins a
+   light ground and ``color-scheme: light`` to keep the always-dark diagram text
+   legible in dark mode too. Scoped to ``.mermaid-diagram svg`` so KaTeX's inline
+   ``<svg>`` radicals are never touched. */
+.mermaid-diagram {
+    background: #fdfcf9;
+    border: 1px solid #e3ddcf;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    margin: 20px 0;
+    padding: 16px 14px;
+    overflow-x: auto;
+    color-scheme: light;
+}
+
+.mermaid-diagram svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+.mermaid-error {
+    border: 1px solid var(--line);
+    border-left: 4px solid #b0432c;
+    border-radius: 8px;
+    background: #f6e2dc;
+    color: #5e2114;
+    padding: 12px 16px;
+    margin: 20px 0;
+}
+
+.mermaid-error-note {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin: 0 0 8px;
+}
+
+.mermaid-error pre {
+    background: #ecccc1;
+    border: 0;
+    box-shadow: none;
+    color: #5e2114;
+    margin: 0;
+}
+
+/* @section: tables */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    font-size: 14px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+thead th {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--line-soft);
+    border-bottom: 1px solid var(--line);
+}
+
+th, td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* @section: footnotes */
+.footnote-ref {
+    font-size: 0.75em;
+    vertical-align: super;
+    line-height: 0;
+    text-decoration: none;
+}
+
+.footnote-ref a {
+    text-decoration: none;
+    color: var(--accent);
+}
+
+.footnotes {
+    margin-top: 2.5em;
+    padding-top: 1em;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--ink-soft);
+}
+
+.footnotes ol {
+    padding-left: 1.5em;
+}
+
+.footnotes li {
+    margin-bottom: 0.4em;
+}
+
+.footnotes hr {
+    display: none;
+}
+
+.footnote-backref {
+    text-decoration: none;
+    color: var(--accent);
+    margin-left: 0.3em;
+}
+
+/* @section: images */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1em 0;
+    border-radius: 6px;
+}
+
+figcaption {
+    font-size: 13px;
+    color: var(--ink-faint);
+    text-align: center;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+figure {
+    margin: 1em 0;
+    padding: 0;
+}
+
+/* @section: hr */
+hr {
+    border: none;
+    height: 1px;
+    background: var(--line);
+    margin: 2em 0;
+}
+
+/* @section: toc
+   ``#toc`` is fixed so the sidebar is its own scroll container -- the scrollspy
+   keeps the active link in view by adjusting this element's scrollTop, which
+   needs somewhere to scroll. Without this section the nav would sit in the
+   document flow with no sidebar. */
+#toc {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 17rem;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2rem 0 3rem;
+    background: var(--panel);
+    border-right: 1px solid var(--line);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    z-index: 100;
+    scrollbar-width: thin;
+}
+
+.toc-title {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+    margin: 0 1.25rem 0.9rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--line);
+}
+
+#toc ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#toc li {
+    margin: 0;
+}
+
+#toc a {
+    display: block;
+    padding: 0.32rem 1.25rem;
+    border-left: 2px solid transparent;
+    color: var(--ink-soft);
+    text-decoration: none;
+}
+
+#toc > ul > li > a {
+    color: var(--ink);
+}
+
+#toc ul ul a {
+    padding-left: 2.1rem;
+    font-size: 0.78rem;
+}
+
+#toc ul ul ul a {
+    padding-left: 2.95rem;
+}
+
+#toc a:hover {
+    background: var(--line-soft);
+    color: var(--ink);
+}
+
+/* The scrollspy marks the heading in view with a left rule and a tint -- no
+   motion, so the highlight sweeping past never shifts the list under the
+   pointer. */
+#toc a.active {
+    background: var(--accent-soft);
+    border-left-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* Centre the text column in the space beside the sidebar. The gutter is padding
+   on <body>, not a margin, so ``margin: auto`` on <main> has room to centre. */
+body:has(#toc) {
+    max-width: none;
+    margin: 0;
+    padding: 0 0 0 17rem;
+}
+
+body:has(#toc) > main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+}
+
+/* @section: screen */
+@media screen {
+    body {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 48px 32px 96px;
+    }
+
+    body:has(#toc) {
+        max-width: none;
+        margin: 0;
+        padding: 0 0 0 17rem;
+    }
+}
+
+/* @section: print-media */
+@media print {
+    body,
+    body:has(#toc) {
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        color: #1b1e24;
+    }
+
+    #toc {
+        position: static;
+        width: auto;
+        height: auto;
+        overflow: visible;
+        border-right: none;
+        background: none;
+        padding: 0;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    body:has(#toc) > main {
+        max-width: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    pre, table, .mermaid-diagram {
+        box-shadow: none;
+    }
+
+    a {
+        color: #1b1e24;
+        text-decoration: none;
+    }
+}

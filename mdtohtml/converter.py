@@ -289,6 +289,64 @@ def preprocess_wikilinks(md_text: str) -> str:
     return _restore_code(rewritten, placeholders)
 
 
+# ── Inline Chip Preprocessing ──
+
+
+# The categorical palette keys a ``:key[label]`` chip may use. Kept in sync with
+# the ``.pchip.<key>`` rules the report theme ships; a key outside this set is
+# left as literal text so ordinary prose containing a colon is never rewritten.
+_CHIP_KEYS = {
+    "blue",
+    "green",
+    "amber",
+    "purple",
+    "teal",
+    "pink",
+    "lime",
+    "gold",
+    "slate",
+    "red",
+    "gray",
+}
+
+# Matches an inline chip: ``:key[label]`` where key is one of the palette keys.
+# The leading ``(?<![\w:])`` requires the ``:`` to start a fresh token, so a key
+# glued to a preceding word (``code:red[1]``) or a stray ``::`` is left alone.
+# The label runs up to the first ``]``; it flows on through markdown and nh3, so
+# any markup inside a label is sanitised by the existing pass, not trusted here.
+_CHIP_RE = re.compile(
+    r"(?<![\w:]):(" + "|".join(sorted(_CHIP_KEYS)) + r")\[([^\]]*)\]"
+)
+
+
+def preprocess_chips(md_text: str) -> str:
+    """Convert inline ``:key[label]`` chip syntax to a coloured ``<span>``.
+
+    Converts, only when *key* is one of the categorical palette keys::
+
+        :blue[North]  →  <span class="pchip blue">North</span>
+
+    A key outside the palette (``:other[x]``) and any other colon usage are left
+    untouched. The label passes through markdown conversion and nh3 sanitisation
+    normally -- ``span``/``class`` are already allowed and any hostile markup in
+    the label is neutralised by that sanitiser, so no special escaping is needed
+    here.
+
+    Fenced and inline code are protected so a ``:blue[...]`` example inside code
+    is never rewritten.
+    """
+    protected, placeholders = _protect_code(md_text)
+
+    def _replace_chip(m: re.Match[str]) -> str:
+        key = m.group(1)
+        label = m.group(2)
+        return f'<span class="pchip {key}">{label}</span>'
+
+    rewritten = _CHIP_RE.sub(_replace_chip, protected)
+
+    return _restore_code(rewritten, placeholders)
+
+
 # ── Math Delimiter Rewriting ──
 
 # pymdownx.arithmatex generic mode wraps each expression in an
@@ -542,6 +600,7 @@ def md_to_html(
     Full pipeline:
     1. Obsidian callout preprocessing
     1a. Wikilink preprocessing (``[[Page]]`` → ``[Page](Page.html)``)
+    1b. Chip preprocessing (``:key[label]`` → ``<span class="pchip key">``)
     2. Markdown conversion with all extensions (```mermaid``` fences render to
        inline SVG, held aside behind a placeholder)
     3. Math pre-rendering (arithmatex → static KaTeX markup)
@@ -567,6 +626,9 @@ def md_to_html(
 
         # Step 1a: Convert Obsidian wikilinks to standard Markdown links
         md_text = preprocess_wikilinks(md_text)
+
+        # Step 1b: Convert inline ``:key[label]`` chips to coloured spans
+        md_text = preprocess_chips(md_text)
 
         # Step 2: Convert markdown to HTML
         md_converter = markdown.Markdown(
