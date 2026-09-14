@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mdtohtml"
 dynamic = ["version"]
-description = "Self-contained Obsidian-compatible Markdown to styled HTML converter with client-side KaTeX."
+description = "Self-contained Obsidian-compatible Markdown to styled HTML converter with pre-rendered KaTeX math and mermaid diagrams."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Mathieu Lomax" }]
-keywords = ["markdown", "html", "converter", "katex", "obsidian", "cli", "pyinstaller"]
+keywords = ["markdown", "html", "converter", "katex", "mermaid", "obsidian", "cli", "pyinstaller"]
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -29,6 +29,11 @@ dependencies = [
     "markdown>=3.5",
     "pymdown-extensions>=10",
     "nh3",
+    # Pinned: each bundles a native engine (quickjs-ng) plus, for mermaidx, a
+    # specific mermaid.js build, so the exact version fixes both the render
+    # output and the wheels bundled into the frozen binary.
+    "mermaidx==0.9.5",
+    "quickjs-ng==0.16.2.1",
 ]
 
 [project.optional-dependencies]

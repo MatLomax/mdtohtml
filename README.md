@@ -16,9 +16,13 @@ into styled, standalone HTML.
   optional table-of-contents sidebar.
 - **Themeable** via drop-in CSS files — add a theme without rebuilding
   anything.
-- **Client-side math.** A bundled KaTeX (fonts inlined as base64 data URIs)
-  is injected only when a document actually contains math, so a math-free
-  document ships zero KaTeX bytes.
+- **Pre-rendered math.** LaTeX math is typeset to static markup at convert
+  time by a bundled KaTeX; the output carries the KaTeX stylesheet and fonts
+  (base64-inlined) but no JavaScript engine, and only when a document actually
+  contains math, so a math-free document ships zero KaTeX bytes.
+- **Pre-rendered diagrams.** A ` ```mermaid ` fenced block is rendered to
+  inline SVG at convert time, so diagrams need no runtime JavaScript and no
+  network call.
 - **Single-file output.** Each converted document is one portable,
   self-contained HTML file.
 
@@ -89,21 +93,51 @@ elsewhere.
 ## Math
 
 Math is written as standard LaTeX delimiters (`$inline$` and `$$display$$`)
-and typeset client-side by a bundled [KaTeX](https://katex.org/), with fonts
-inlined as base64 data URIs. The KaTeX assets are only injected into the
-output `<head>` when a document actually contains math, so a document
-without math carries zero KaTeX bytes.
+and typeset to static HTML at convert time by a bundled
+[KaTeX](https://katex.org/) run in an embedded JavaScript engine. The output
+carries only the KaTeX stylesheet (fonts inlined as base64 data URIs) needed
+to display that markup — no KaTeX engine or client-side script ships in the
+page. The stylesheet is injected into the output `<head>` only when a document
+actually contains math, so a document without math carries zero KaTeX bytes.
 
-KaTeX is MIT-licensed (Copyright (c) 2013-2020 Khan Academy and other
-contributors); its license ships in `mdtohtml/katex/LICENSE`.
+A malformed expression renders as a visible KaTeX error rather than aborting
+the conversion.
+
+KaTeX's code is MIT-licensed (Copyright (c) 2013-2020 Khan Academy and other
+contributors); its fonts are licensed under the SIL Open Font License 1.1
+(Copyright (c) 2009-2010 Design Science, Inc.; Copyright (c) 2014-2018 Khan
+Academy). Both licenses ship in the bundle: `mdtohtml/katex/LICENSE` (MIT) and
+`mdtohtml/katex/OFL.txt` (OFL).
+
+## Diagrams
+
+A fenced code block tagged `mermaid` is pre-rendered to inline SVG at convert
+time using [`mermaidx`](https://pypi.org/project/mermaidx/) (mermaid.js run in
+an embedded engine), so diagrams display with no runtime JavaScript and no
+network call:
+
+````markdown
+```mermaid
+graph TD; A[Start] --> B{OK?}; B -->|yes| C[Done]; B -->|no| A
+```
+````
+
+Diagrams render with the `dark` mermaid theme under the `dark` theme and the
+default palette otherwise. A diagram that fails to parse degrades to its
+original source shown as a code block with a visible note, so one bad diagram
+never breaks the document.
 
 ## How it works
 
 1. Markdown (with Obsidian callouts and wikilinks preprocessed) is converted
-   to HTML via `markdown` + `pymdown-extensions`.
-2. The output is sanitized with [`nh3`](https://github.com/messense/nh3).
-3. The sanitized body is wrapped in an HTML template with the chosen theme's
-   CSS inlined, plus the KaTeX assets when the document contains math.
+   to HTML via `markdown` + `pymdown-extensions`; ` ```mermaid ` fences render
+   to inline SVG, held aside behind a placeholder.
+2. Math is pre-rendered to static KaTeX markup.
+3. The output is sanitized with [`nh3`](https://github.com/messense/nh3), then
+   the trusted diagram SVG is restored in place of its placeholder (it carries
+   a load-bearing `<style>` block the sanitizer would otherwise strip).
+4. The sanitized body is wrapped in an HTML template with the chosen theme's
+   CSS inlined, plus the KaTeX stylesheet when the document contains math.
 
 No `weasyprint`, no headless browser, no PDF path — HTML is the only output
 format.
@@ -151,8 +185,9 @@ scripts/build_binary.sh
 `mdtohtml.spec` (onefile), and then assembles the release zip that ships to
 users: `dist/mdtohtml-linux-x86_64.zip` (or `dist/mdtohtml-windows-x86_64.zip`
 on Windows), containing the executable and a `themes/` folder side by side.
-Theme CSS is **not** baked into the executable — only KaTeX's rendering
-assets are — so the `themes/` folder must travel with the binary.
+Theme CSS is **not** baked into the executable — only the KaTeX and mermaid
+rendering assets (and the engines that drive them) are — so the `themes/`
+folder must travel with the binary.
 
 The Linux binary is dynamically linked against the glibc of the machine that
 built it, so it runs on that glibc version or newer. It does not run on musl

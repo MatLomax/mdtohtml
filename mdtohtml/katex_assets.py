@@ -1,9 +1,11 @@
-"""Bundled KaTeX assets for client-side math rendering.
+"""Bundled KaTeX ``<head>`` stylesheet for pre-rendered math.
 
-Reads the self-contained KaTeX bundle (CSS with fonts inlined as base64
-data URIs, the KaTeX engine, and the auto-render extension) from the
-package's ``katex/`` directory and assembles the ``<head>`` snippet that
-typesets math in the browser on ``DOMContentLoaded``.
+Reads the self-contained KaTeX stylesheet (CSS with fonts inlined as base64
+data URIs) from the package's ``katex/`` directory and assembles the ``<head>``
+snippet a document needs. Math is typeset at convert time by
+``katex_render.render_math``, so the output carries static KaTeX markup and
+this snippet ships only the CSS/fonts that style it -- no JavaScript engine and
+no init script.
 """
 
 from __future__ import annotations
@@ -24,42 +26,26 @@ def _katex_dir() -> Path:
         return Path(sys._MEIPASS) / "katex"
     return Path(__file__).resolve().parent / "katex"
 
-# Init script: run KaTeX auto-render over the whole body once the DOM is ready,
-# matching the ``\(...\)`` inline and ``\[...\]`` display delimiters that
-# ``_math_to_delimiters`` emits.
-_INIT_JS = (
-    "document.addEventListener(\"DOMContentLoaded\",function(){"
-    "renderMathInElement(document.body,{delimiters:["
-    '{left:"\\\\(",right:"\\\\)",display:false},'
-    '{left:"\\\\[",right:"\\\\]",display:true}'
-    "]});});"
-)
-
 
 @lru_cache(maxsize=1)
-def katex_head_assets() -> str:
-    """Return the ``<head>`` snippet that renders math client-side.
+def katex_css_head_assets() -> str:
+    """Return the ``<head>`` snippet that styles pre-rendered math.
 
-    Bundles the inlined KaTeX stylesheet, the KaTeX engine, the auto-render
-    extension, and an init script. Cached after first read.
+    Bundles only the inlined KaTeX stylesheet (fonts embedded as base64 data
+    URIs) -- no engine and no init script -- since math is typeset at convert
+    time by ``katex_render.render_math`` and the output already carries static
+    KaTeX markup. Cached after first read.
     """
-    katex_dir = _katex_dir()
-    css = (katex_dir / "katex.min.css").read_text(encoding="utf-8")
-    katex_js = (katex_dir / "katex.min.js").read_text(encoding="utf-8")
-    autorender_js = (katex_dir / "auto-render.min.js").read_text(encoding="utf-8")
+    css = (_katex_dir() / "katex.min.css").read_text(encoding="utf-8")
 
-    # Carry KaTeX's copyright notice into every document that inlines its code
-    # (MIT requires the notice to travel with all copies). The full license text
-    # ships in the bundled ``katex/LICENSE``; keep this line in sync with it.
+    # Carry KaTeX's licenses into every document that inlines its assets. The
+    # KaTeX code is MIT and its fonts are SIL OFL 1.1; both licenses require
+    # their notices to travel with all copies. Full texts ship in the bundled
+    # ``katex/`` license files; keep this line in sync with them.
     notice = (
-        "<!-- KaTeX | MIT License | "
-        "Copyright (c) 2013-2020 Khan Academy and other contributors | "
-        "https://katex.org -->"
+        "<!-- KaTeX code: MIT License, "
+        "Copyright (c) 2013-2020 Khan Academy and other contributors. "
+        "KaTeX fonts: SIL Open Font License 1.1. "
+        "See the bundled katex/ license files | https://katex.org -->"
     )
-    return (
-        f"{notice}"
-        f"<style>{css}</style>"
-        f"<script>{katex_js}</script>"
-        f"<script>{autorender_js}</script>"
-        f"<script>{_INIT_JS}</script>"
-    )
+    return f"{notice}<style>{css}</style>"

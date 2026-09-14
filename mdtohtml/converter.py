@@ -1,9 +1,10 @@
 """Core conversion library for mdtohtml.
 
 Converts Obsidian-compatible Markdown to styled, self-contained HTML with
-themeable CSS. Math is emitted as plain KaTeX auto-render delimiters and
-typeset client-side by a bundled KaTeX; documents without math carry zero
-KaTeX bytes.
+themeable CSS. Math is pre-rendered to static KaTeX markup at convert time and
+styled by the bundled KaTeX CSS/fonts; ```mermaid``` fences are pre-rendered to
+inline SVG. Neither ships a JavaScript engine or makes a network request, and a
+document without math or diagrams carries none of their bytes.
 
 No HTTP, no CLI, no file writing. Callers decide what to do with the output.
 """
@@ -19,7 +20,7 @@ from pathlib import Path
 import markdown
 import nh3
 
-from . import katex_assets
+from . import katex_assets, katex_render, mermaid_render
 
 # ── Path Constants ──
 
@@ -317,27 +318,14 @@ _DISPLAY_MATH_RE = re.compile(
 )
 
 
-def _escape_math(expr: str) -> str:
-    """HTML-escape the characters that would otherwise break out of markup.
+def _prerender_math(html: str) -> str:
+    """Replace pymdownx.arithmatex output with static, pre-rendered KaTeX markup.
 
-    arithmatex generic mode already HTML-escapes the expression it emits, so
-    the text is first unescaped to the raw LaTeX and then escaped exactly
-    once. This is idempotent and stays correct whether the source came from
-    the ``\\(...\\)`` markup (pre-escaped) or a ``<script type="math/tex">``
-    tag (raw).
-    """
-    raw = _html.unescape(expr)
-    return raw.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-
-def _math_to_delimiters(html: str) -> str:
-    """Replace pymdownx.arithmatex output with plain KaTeX auto-render markup.
-
-    Each inline expression ``E`` becomes ``<span class="katex-inline">\\(E\\)</span>``
-    and each display expression ``E`` becomes
-    ``<span class="katex-display">\\[E\\]</span>``. The wrapping ``span`` and the
-    literal ``\\(...\\)`` / ``\\[...\\]`` delimiters survive nh3 sanitisation and
-    are picked up by KaTeX's ``renderMathInElement`` in the browser.
+    Each inline and display expression is typeset at convert time by
+    ``katex_render.render_math`` and spliced back in place of the arithmatex
+    element, so the document ships finished KaTeX HTML with no JavaScript
+    engine. arithmatex HTML-escapes the expression it emits, so each is
+    unescaped to raw LaTeX before rendering (KaTeX consumes LaTeX directly).
     """
     # (start, end, replacement) tuples, applied end-to-start so positions hold.
     replacements: list[tuple[int, int, str]] = []
@@ -346,19 +334,15 @@ def _math_to_delimiters(html: str) -> str:
         expr = m.group(1) if m.group(1) is not None else m.group(2)
         if expr is None:
             continue
-        esc = _escape_math(expr.strip())
-        replacements.append(
-            (m.start(), m.end(), f'<span class="katex-inline">\\({esc}\\)</span>')
-        )
+        markup = katex_render.render_math(_html.unescape(expr.strip()), display=False)
+        replacements.append((m.start(), m.end(), markup))
 
     for m in _DISPLAY_MATH_RE.finditer(html):
         expr = m.group(1) if m.group(1) is not None else m.group(2)
         if expr is None:
             continue
-        esc = _escape_math(expr.strip())
-        replacements.append(
-            (m.start(), m.end(), f'<span class="katex-display">\\[{esc}\\]</span>')
-        )
+        markup = katex_render.render_math(_html.unescape(expr.strip()), display=True)
+        replacements.append((m.start(), m.end(), markup))
 
     if not replacements:
         return html
@@ -408,6 +392,11 @@ _MD_EXTENSION_CONFIGS = {
     },
     "pymdownx.highlight": {
         "guess_lang": False,
+    },
+    "pymdownx.superfences": {
+        # Route ```mermaid fences to the diagram pre-renderer; every other
+        # fence keeps the default highlighter.
+        "custom_fences": [mermaid_render.superfences_config()],
     },
     "toc": {
         "marker": "",
@@ -468,10 +457,14 @@ _NH3_ALLOWED_TAGS = {
     "mn",
     "msup",
     "msub",
+    "msubsup",
     "mfrac",
     "msqrt",
+    "mroot",
     "mover",
     "munder",
+    "munderover",
+    "mstyle",
     "mtable",
     "mtr",
     "mtd",
@@ -494,9 +487,47 @@ _NH3_ALLOWED_ATTRIBUTES: dict[str, set[str]] = {
     "th": {"align", "colspan", "rowspan"},
     "ol": {"start", "type"},
     "li": {"value"},
-    "svg": {"xmlns", "viewBox", "width", "height", "fill"},
+    # KaTeX positions its HTML spans with inline ``style`` and marks its
+    # duplicated MathML tree ``aria-hidden``.
+    "span": {"style", "aria-hidden"},
+    # KaTeX HTML and MathML attributes. ``svg``/``path`` also cover the inline
+    # SVG KaTeX draws for radicals and stretchy delimiters.
+    "svg": {"xmlns", "viewBox", "width", "height", "fill", "preserveAspectRatio"},
     "path": {"d", "fill", "stroke", "stroke-width"},
-    "math": {"xmlns"},
+    "math": {"xmlns", "display"},
+    "annotation": {"encoding"},
+    "mo": {"stretchy", "fence"},
+    "mi": {"mathvariant"},
+    "mstyle": {"scriptlevel", "displaystyle"},
+    "mspace": {"width"},
+    "mover": {"accent"},
+    "munder": {"accentunder"},
+    "mtable": {"rowspacing", "columnalign", "columnspacing"},
+}
+
+# The CSS properties KaTeX sets via inline ``style``. Passed to nh3 as
+# ``filter_style_properties`` so any other declaration (a ``background:url(...)``
+# or ``behavior:`` payload) is dropped while KaTeX's own layout survives.
+#
+# ``position`` is deliberately excluded. KaTeX's HTML only ever sets it to
+# ``relative`` on its ``op-symbol`` spans, which the bundled stylesheet already
+# positions via the ``.katex .op-symbol`` rule, so the inline copy is redundant
+# and dropping it leaves rendering intact (the ``top`` offset still applies).
+# Excluding the property means nh3 strips every ``position`` declaration by its
+# normalised name -- so a viewport-pinning ``position: fixed`` / ``sticky``
+# overlay injected through the math source cannot survive, and neither can an
+# escape-obfuscated spelling (``position:\66 ixed``) that a value-level check on
+# the pre-normalised string would miss.
+_KATEX_STYLE_PROPS = {
+    "height",
+    "top",
+    "margin-right",
+    "margin-left",
+    "vertical-align",
+    "border-bottom-width",
+    "padding-left",
+    "min-width",
+    "width",
 }
 
 
@@ -504,46 +535,62 @@ def md_to_html(
     md_text: str,
     *,
     ignore_callouts: set[str] | None = None,
+    dark: bool = False,
 ) -> str:
     """Convert markdown text to an HTML body fragment.
 
     Full pipeline:
     1. Obsidian callout preprocessing
     1a. Wikilink preprocessing (``[[Page]]`` → ``[Page](Page.html)``)
-    2. Markdown conversion with all extensions
-    3. Math delimiter rewriting (arithmatex → KaTeX auto-render delimiters)
+    2. Markdown conversion with all extensions (```mermaid``` fences render to
+       inline SVG, held aside behind a placeholder)
+    3. Math pre-rendering (arithmatex → static KaTeX markup)
     4. nh3 HTML sanitisation
+    5. Restore the rendered mermaid SVG in place of its placeholder, after
+       sanitisation, since the trusted SVG carries a load-bearing ``<style>``
+       block nh3 would otherwise strip.
 
-    When *ignore_callouts* is provided, callout blocks whose type is in
-    the set are removed from the output entirely.
+    When *ignore_callouts* is provided, callout blocks whose type is in the
+    set are removed from the output entirely. When *dark* is true, mermaid
+    diagrams render with the dark theme.
     """
     # Step 0: Drop literal NUL bytes so they cannot collide with the
     # NUL-delimited code placeholder sentinels used throughout the pipeline.
     md_text = md_text.replace("\x00", "")
 
-    # Step 1: Preprocess Obsidian callouts
-    md_text = preprocess_obsidian_callouts(md_text, ignore_callouts=ignore_callouts)
+    mermaid_render.begin_conversion(dark=dark)
+    try:
+        # Step 1: Preprocess Obsidian callouts
+        md_text = preprocess_obsidian_callouts(
+            md_text, ignore_callouts=ignore_callouts
+        )
 
-    # Step 1a: Convert Obsidian wikilinks to standard Markdown links
-    md_text = preprocess_wikilinks(md_text)
+        # Step 1a: Convert Obsidian wikilinks to standard Markdown links
+        md_text = preprocess_wikilinks(md_text)
 
-    # Step 2: Convert markdown to HTML
-    md_converter = markdown.Markdown(
-        extensions=_MD_EXTENSIONS,
-        extension_configs=_MD_EXTENSION_CONFIGS,
-        output_format="html",
-    )
-    html = md_converter.convert(md_text)
+        # Step 2: Convert markdown to HTML
+        md_converter = markdown.Markdown(
+            extensions=_MD_EXTENSIONS,
+            extension_configs=_MD_EXTENSION_CONFIGS,
+            output_format="html",
+        )
+        html = md_converter.convert(md_text)
 
-    # Step 3: Rewrite math into client-side KaTeX auto-render delimiters
-    html = _math_to_delimiters(html)
+        # Step 3: Pre-render math into static KaTeX markup
+        html = _prerender_math(html)
 
-    # Step 4: Sanitise with nh3
-    html = nh3.clean(
-        html,
-        tags=_NH3_ALLOWED_TAGS,
-        attributes=_NH3_ALLOWED_ATTRIBUTES,
-    )
+        # Step 4: Sanitise with nh3
+        html = nh3.clean(
+            html,
+            tags=_NH3_ALLOWED_TAGS,
+            attributes=_NH3_ALLOWED_ATTRIBUTES,
+            filter_style_properties=_KATEX_STYLE_PROPS,
+        )
+
+        # Step 5: Restore trusted mermaid SVG behind the sanitiser
+        html = mermaid_render.restore_mermaid(html)
+    finally:
+        mermaid_render.end_conversion()
 
     return html
 
@@ -745,17 +792,17 @@ update();
 def _head_extra_for(body: str) -> str:
     """Return the ``<head>`` snippet needed by *body*.
 
-    KaTeX assets are injected only when the body carries the math markup
-    emitted by ``_math_to_delimiters`` -- the opening span tag immediately
-    followed by its delimiter (``\\(`` or ``\\[``). Matching that whole
-    sequence, rather than the bare class name, means a document that merely
-    mentions ``katex-inline`` in prose or inline code (where any ``<``/``>``
-    is escaped) ships zero KaTeX bytes.
+    The KaTeX stylesheet (with its base64 fonts) is injected only when the body
+    carries KaTeX markup, which needs that stylesheet to display. KaTeX wraps
+    every expression in a ``class="katex"`` root, so that attribute is the
+    sentinel -- present both for math this converter pre-rendered and for KaTeX
+    markup an author wrote as raw HTML (which equally needs the CSS). A document
+    that merely mentions "katex" in prose or inline code has its ``<``/``>``
+    escaped, so the attribute never forms and it ships zero KaTeX bytes. No
+    script is injected: math is already typeset in the markup.
     """
-    has_math = ('class="katex-inline">\\(' in body) or (
-        'class="katex-display">\\[' in body
-    )
-    return katex_assets.katex_head_assets() if has_math else ""
+    has_math = 'class="katex' in body
+    return katex_assets.katex_css_head_assets() if has_math else ""
 
 
 def render_html(
@@ -765,11 +812,13 @@ def render_html(
     *,
     ignore_callouts: set[str] | None = None,
     toc: bool = False,
+    dark: bool = False,
 ) -> str:
     """Convert markdown to a full HTML document string.
 
     When *toc* is True, a fixed table-of-contents sidebar is prepended to
-    the body and scroll-tracking JavaScript is appended.
+    the body and scroll-tracking JavaScript is appended. When *dark* is true,
+    mermaid diagrams render with the dark theme.
     """
     if title is None:
         title = extract_title(md_text)
@@ -777,6 +826,7 @@ def render_html(
     body = md_to_html(
         md_text,
         ignore_callouts=ignore_callouts,
+        dark=dark,
     )
 
     head_extra = _head_extra_for(body)
@@ -812,6 +862,9 @@ def convert(
 
     When *toc* is True, a table-of-contents sidebar is included in the output.
 
+    The ``dark`` theme renders mermaid diagrams with matching light-on-dark
+    colours; every other theme uses the default diagram palette.
+
     Raises ValueError for invalid inputs.
     """
     if not md_text or not md_text.strip():
@@ -824,4 +877,5 @@ def convert(
         css,
         ignore_callouts=ignore_callouts,
         toc=toc,
+        dark=theme_name.lower() == "dark",
     )

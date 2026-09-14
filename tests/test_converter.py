@@ -344,54 +344,145 @@ class TestConvert:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Math handling (client-side KaTeX)
+# Math handling (server-side pre-rendered KaTeX)
 # ═══════════════════════════════════════════════════════════════════════
 
 
 class TestMath:
-    """Math renders client-side via bundled KaTeX; math-free docs ship none."""
+    """Math is typeset to static KaTeX markup at convert time.
+
+    The output ships KaTeX CSS/fonts but no JavaScript engine, and a math-free
+    document carries none of the KaTeX bytes.
+    """
 
     def test_math_free_has_no_katex_assets(self, tmp_themes_dir: Path) -> None:
         content = convert("# Plain\n\nNo math here at all.\n", "test-theme",
                           tmp_themes_dir)
-        # No auto-render init, no math delimiter spans, no inlined KaTeX fonts.
-        assert "renderMathInElement" not in content
-        assert "katex-inline" not in content
-        assert 'katex-display">' not in content
+        # No KaTeX markup, no inlined KaTeX fonts, and no math-rendering script.
+        assert 'class="katex' not in content
         assert "data:font/woff2;base64" not in content
+        assert "renderMathInElement" not in content
 
-    def test_math_injects_katex_and_delimiters(self, tmp_themes_dir: Path) -> None:
+    def test_math_pre_renders_to_static_markup(self, tmp_themes_dir: Path) -> None:
         md = "Euler: $e^{i\\pi} + 1 = 0$\n\n$$x = \\frac{-b}{2a}$$\n"
         content = convert(md, "test-theme", tmp_themes_dir)
-        # KaTeX auto-render init present, and the bundle was injected.
-        assert "renderMathInElement" in content
+        # The KaTeX stylesheet (with base64 fonts) is injected, and the math is
+        # already typeset in the markup: an inline root and a display block.
         assert "data:font/woff2;base64" in content
-        # Inline delimiter span with the expression text.
-        assert '<span class="katex-inline">\\(e^{i\\pi} + 1 = 0\\)</span>' in content
-        # Display delimiter span with the expression text.
-        assert '<span class="katex-display">\\[x = \\frac{-b}{2a}\\]</span>' in content
+        assert 'class="katex"' in content
+        assert "katex-display" in content
 
-    def test_math_escapes_html_specials(self, tmp_themes_dir: Path) -> None:
+    def test_math_ships_no_js_engine(self, tmp_themes_dir: Path) -> None:
+        # A math document with no TOC carries zero script: math is pre-rendered,
+        # so neither the KaTeX engine nor an auto-render init is in the output.
+        content = convert("Inline $x^2$ only.\n", "test-theme", tmp_themes_dir)
+        assert "<script" not in content
+        assert "renderMathInElement" not in content
+
+    def test_math_error_degrades_visibly(self) -> None:
+        # A malformed expression yields visible katex-error markup rather than
+        # raising and aborting the whole document.
+        html = md_to_html("Broken $\\frac{$ expression.")
+        assert "katex-error" in html
+
+    def test_math_handles_html_specials(self, tmp_themes_dir: Path) -> None:
+        # ``<`` / ``>`` inside math are LaTeX relations; the expression renders
+        # to KaTeX markup without leaking a raw angle bracket into the document.
         content = convert("Compare $a < b > c$.", "test-theme", tmp_themes_dir)
-        # The delimiter span survives sanitisation with entities, escaped once.
-        assert '<span class="katex-inline">\\(a &lt; b &gt; c\\)</span>' in content
-        assert "&amp;lt;" not in content  # not double-escaped
-
-    def test_math_delimiters_survive_sanitisation(self) -> None:
-        html = md_to_html("Inline $x^2$ math.")
-        assert '<span class="katex-inline">' in html
-        assert "\\(x^2\\)" in html
+        assert 'class="katex"' in content
 
     def test_katex_class_mention_does_not_inject(self, tmp_themes_dir: Path) -> None:
         # A math-free doc that merely names the KaTeX classes -- in prose and in
         # inline code -- must ship zero KaTeX bytes. The bare class name appears
-        # in the body as text/`<code>` but never as the `class="..">\(` markup
-        # `_math_to_delimiters` emits, so injection must not trigger.
+        # in the body as text/`<code>` but never as KaTeX's own ``class="katex"``
+        # root, so the stylesheet injection must not trigger.
         md = "Style the `katex-inline` and katex-display classes in your CSS.\n"
         content = convert(md, "test-theme", tmp_themes_dir)
         assert "katex-inline" in content  # the word is legitimately present
-        assert "renderMathInElement" not in content
+        assert 'class="katex"' not in content
         assert "data:font/woff2;base64" not in content
+
+    def test_inline_style_cannot_pin_to_viewport(self) -> None:
+        # Allowing inline ``style`` for KaTeX must not let raw HTML in the
+        # source pin an element to the viewport for a clickjacking overlay.
+        # ``position`` is not an allowed style property, so every spelling --
+        # plain, escaped value, and escaped property name -- is stripped, while
+        # the layout properties KaTeX needs (here ``top``) may remain inert.
+        for payload in (
+            '<span style="position:fixed;top:0;width:100%;height:100%">x</span>',
+            r'<span style="position:\66 ixed;top:0;width:100%">x</span>',
+            r'<span style="po\73 ition:fixed">x</span>',
+            '<span style="position:sticky;top:0">x</span>',
+            '<span style="position:absolute;top:0;width:100%;height:100%">x</span>',
+        ):
+            out = md_to_html(payload)
+            assert "position" not in out
+            assert "fixed" not in out.lower()
+            assert "sticky" not in out.lower()
+            assert "absolute" not in out.lower()
+
+    def test_math_keeps_operator_vertical_offset(self) -> None:
+        # Dropping the redundant inline ``position`` must not cost KaTeX its
+        # large-operator vertical offset: the ``top`` declaration still ships
+        # and the ``.op-symbol`` class positions the element via the stylesheet.
+        html = md_to_html("$\\sum_{i=1}^{n} i$")
+        assert 'class="katex"' in html
+        assert "top:" in html
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Mermaid diagrams (server-side pre-rendered SVG)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestMermaid:
+    """```mermaid``` fences pre-render to inline SVG that survives sanitisation."""
+
+    def test_fence_renders_to_inline_svg(self) -> None:
+        html = md_to_html("```mermaid\ngraph TD; A-->B; B-->C\n```\n")
+        assert "<svg" in html
+        # The placeholder used to bypass the sanitiser is fully resolved.
+        assert "mermaid-placeholder" not in html
+
+    def test_rendered_svg_carries_no_script(self) -> None:
+        html = md_to_html("```mermaid\ngraph TD; A-->B\n```\n")
+        assert "<script" not in html
+        assert "foreignobject" not in html.lower()
+
+    def test_style_blob_survives_sanitisation(self) -> None:
+        # The diagram's load-bearing <style> block is trusted renderer output
+        # injected after nh3, so it reaches the document intact.
+        html = md_to_html("```mermaid\ngraph TD; A-->B\n```\n")
+        assert "<style" in html
+
+    def test_multiple_diagrams_in_one_document(self) -> None:
+        md = (
+            "```mermaid\ngraph TD; A-->B\n```\n\n"
+            "```mermaid\nsequenceDiagram\n    Alice->>John: Hi\n```\n"
+        )
+        html = md_to_html(md)
+        assert html.count("<svg") == 2
+        assert "mermaid-placeholder" not in html
+
+    def test_bad_diagram_degrades_without_crashing(self) -> None:
+        html = md_to_html("```mermaid\n$$ not a valid diagram !!!\n```\n")
+        assert "mermaid-error" in html
+        assert "<svg" not in html
+
+    def test_diagram_free_doc_has_no_mermaid_artifacts(self) -> None:
+        html = md_to_html("# Title\n\nJust prose, no diagrams.\n")
+        assert "mermaid" not in html
+        assert "<svg" not in html
+
+    def test_dark_theme_differs_from_default(self) -> None:
+        src = "```mermaid\ngraph TD; A-->B\n```\n"
+        assert md_to_html(src, dark=True) != md_to_html(src, dark=False)
+
+    def test_code_fence_of_other_language_is_not_rendered(self) -> None:
+        # A plain code fence must stay a code block, not route to the renderer.
+        html = md_to_html("```python\nprint('graph TD; A-->B')\n```\n")
+        assert "<svg" not in html
+        assert "<code" in html
 
 
 # ═══════════════════════════════════════════════════════════════════════

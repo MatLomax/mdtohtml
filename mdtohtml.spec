@@ -13,7 +13,11 @@ dropping a ``.css`` file into that directory with no rebuild.
 import sys
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import (
+    collect_data_files,
+    collect_dynamic_libs,
+    collect_submodules,
+)
 
 # ``__file__`` is not defined when a .spec is exec'd, so derive the project
 # root from the current working directory (PyInstaller runs from there).
@@ -25,9 +29,25 @@ _ROOT = Path.cwd()
 # all extensions the converter names are present in the frozen binary.
 hiddenimports = collect_submodules("markdown") + collect_submodules("pymdownx")
 
+# The JS engine behind both server-side KaTeX and mermaid rendering. quickjs-ng
+# exposes its native extension as the top-level module ``_quickjs`` (its .so
+# sits at the site-packages root), imported by the ``quickjs`` package; name it
+# explicitly since the static analyzer never sees it. mermaidx loads its engine
+# and resvg lazily, so collect every submodule.
+hiddenimports += ["_quickjs"]
+hiddenimports += collect_submodules("mermaidx")
+
 datas = [
     (str(_ROOT / "mdtohtml" / "katex"), "katex"),
 ]
+# mermaidx reads assets/mermaid.js, assets/dom_shim.js and assets/fonts/*.ttf
+# relative to its package directory; collect_data_files preserves that layout.
+datas += collect_data_files("mermaidx")
+
+# Native extension modules invisible to static analysis: the resvg SVG
+# rasteriser (a Rust cdylib) and the quickjs-ng engine.
+binaries = collect_dynamic_libs("resvg_py")
+binaries += collect_dynamic_libs("quickjs")
 
 # Heavy, unused modules. weasyprint is the deliberately-dropped PDF path;
 # tkinter and friends are GUI/scientific stacks the converter never imports.
@@ -46,7 +66,7 @@ excludes = [
 a = Analysis(
     ["entry.py"],
     pathex=[str(_ROOT)],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
