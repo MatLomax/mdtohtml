@@ -538,6 +538,55 @@ def _wrap_tables(html: str) -> str:
     )
 
 
+# ── Code Sheet Header ──
+
+
+# The ``<span class="filename">`` that ``pymdownx.highlight`` emits for a fenced
+# block's ``title=`` attribute (``` ```{.python title="..."} ```). The match is
+# anchored to the opening ``<div class="highlight">`` so only a highlighter-emitted
+# filename (the first child of a code block) is rewritten, never a stray
+# ``.filename`` span an author wrote in prose. The non-greedy body match is safe
+# because an escaped ``</span>`` inside a title reads ``&lt;/span&gt;``.
+_FILENAME_RE = re.compile(
+    r'(<div class="highlight">)<span class="filename">(.*?)</span>', re.S
+)
+
+
+def _style_code_headers(html: str) -> str:
+    """Turn a code block's ``title=`` filename into a titled ``.sheet-head`` bar.
+
+    A fenced block written ``` ```{.python title="Before the fix | MainWnd.cs"} ```
+    highlights normally and carries a ``<span class="filename">`` header inside its
+    ``<div class="highlight">``. This rewrites that span into the same header
+    treatment the diagram card uses: a ``left | right`` title splits (on the first
+    ``|``) into a left-aligned label and a right-aligned meta note; a plain title
+    is a single left label. The report theme joins the header and the code into
+    one card.
+
+    The captured title text is re-emitted as-is (the highlighter has already
+    HTML-escaped it, so no double-escaping). This pass runs BEFORE ``nh3.clean``,
+    which is the sanitisation backstop: even a title that somehow carried live
+    markup is neutralised downstream, so re-emitting verbatim is safe.
+    """
+    def _replace(m: re.Match[str]) -> str:
+        content = m.group(2)
+        left, sep, right = content.partition("|")
+        left, right = left.strip(), right.strip()
+        if sep and left and right:
+            head = (
+                '<div class="sheet-head">'
+                f'<span class="t">{left}</span>'
+                f'<span class="r">{right}</span>'
+                "</div>"
+            )
+        else:
+            single = left or right or content.strip()
+            head = f'<div class="sheet-head"><span class="t">{single}</span></div>'
+        return m.group(1) + head
+
+    return _FILENAME_RE.sub(_replace, html)
+
+
 # ── Core Functions ──
 
 
@@ -777,6 +826,10 @@ def md_to_html(
         # Step 3a: Wrap each table in a horizontal-scroll container so a wide
         # table scrolls within the card instead of overflowing the page.
         html = _wrap_tables(html)
+
+        # Step 3b: Turn a code block's ``title=`` filename into a titled card
+        # header (``.sheet-head``).
+        html = _style_code_headers(html)
 
         # Step 4: Sanitise with nh3
         html = nh3.clean(

@@ -559,6 +559,49 @@ pre code {
     margin: 0;
 }
 
+/* Titled header bar for a code block, lifted from a fence's ``title=`` attribute
+   (``` ```{.python title="left | right"} ```). It mirrors the diagram card's
+   header treatment: a mono uppercase bar with a left label and an optional
+   right-aligned meta note. When a code block carries one, ``:has()`` joins the
+   header and the ``<pre>`` into a single bordered, rounded card (the ``<pre>``
+   drops its own frame); a code block without a header is unchanged. */
+.sheet-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--line-soft);
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.sheet-head .t {
+    color: var(--ink-soft);
+    font-weight: 700;
+}
+
+.sheet-head .r {
+    color: var(--ink-faint);
+    font-weight: 400;
+}
+
+.highlight:has(.sheet-head) {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.highlight:has(.sheet-head) pre {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
 /* A line flagged via ``hl_lines`` is banded so the eye lands on it: an accent
    tint with an inset accent rule down its left edge. ``inline-block`` +
    ``min-width: 100%`` makes the band at least the code panel's width AND grow
@@ -1212,7 +1255,8 @@ body:has(#toc) > main {
         padding: 0;
     }
 
-    pre, .tbl-scroll, .mermaid-diagram, .admonition {
+    pre, .tbl-scroll, .mermaid-diagram, .admonition,
+    .highlight:has(.sheet-head) {
         box-shadow: none;
     }
 

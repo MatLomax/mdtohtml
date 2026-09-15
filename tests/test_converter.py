@@ -11,6 +11,7 @@ from mdtohtml.converter import (
     TOC_JS,
     _build_toc_nav,
     _extract_headings,
+    _style_code_headers,
     _wrap_tables,
     convert,
     extract_title,
@@ -929,6 +930,79 @@ class TestMdToHtmlChips:
         assert "alert(1)" not in html
         # The chip wrapper itself is intact; only the payload is neutralised.
         assert 'class="pchip blue"' in html
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Code sheet header (title= -> .sheet-head)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestStyleCodeHeaders:
+    _PRE = '<div class="highlight"><span class="filename">{}</span><pre></pre></div>'
+
+    def test_pipe_title_splits_into_left_and_right(self) -> None:
+        out = _style_code_headers(self._PRE.format("Before | file.py"))
+        assert (
+            '<div class="highlight"><div class="sheet-head">'
+            '<span class="t">Before</span>'
+            '<span class="r">file.py</span>'
+            "</div>"
+        ) in out
+
+    def test_plain_title_is_single_label(self) -> None:
+        out = _style_code_headers(self._PRE.format("config.py"))
+        assert (
+            '<div class="highlight"><div class="sheet-head">'
+            '<span class="t">config.py</span></div>'
+        ) in out
+
+    def test_no_filename_is_untouched(self) -> None:
+        html = '<div class="highlight"><pre><code>x</code></pre></div>'
+        assert _style_code_headers(html) == html
+
+    def test_prose_filename_span_is_not_transformed(self) -> None:
+        # The match is anchored to the opening highlight div, so a stray
+        # ``.filename`` span in prose is left alone (no orphan header).
+        html = '<p>see <span class="filename">notes.txt</span></p>'
+        assert _style_code_headers(html) == html
+
+    def test_already_escaped_content_is_not_double_escaped(self) -> None:
+        # pymdownx escapes the title; the pass must re-emit it verbatim.
+        out = _style_code_headers(self._PRE.format("a &lt;b&gt;"))
+        assert "a &lt;b&gt;" in out
+        assert "&amp;lt;" not in out
+
+
+class TestMdToHtmlCodeSheet:
+    def test_titled_fence_renders_header_and_preserves_highlight(self) -> None:
+        out = md_to_html('```{.python title="Before | converter.py"}\nx = 1\n```')
+        assert '<div class="sheet-head">' in out
+        assert '<span class="t">Before</span>' in out
+        assert '<span class="r">converter.py</span>' in out
+        # Syntax highlighting survives (the delegate highlighter ran).
+        assert 'class="highlight"' in out
+        assert 'class="mi"' in out
+        assert "filename" not in out
+
+    def test_plain_fence_has_no_sheet_head(self) -> None:
+        out = md_to_html("```python\nx = 1\n```")
+        assert "sheet-head" not in out
+        assert 'class="highlight"' in out
+
+    def test_hostile_title_is_escaped(self) -> None:
+        out = md_to_html('```{.python title="<img src=x onerror=alert(1)>"}\nx=1\n```')
+        assert "<img" not in out
+        assert '<span class="t">&lt;img src=x onerror=alert(1)&gt;</span>' in out
+
+
+class TestReportThemeCodeSheet:
+    def test_report_css_styles_the_sheet_head(self) -> None:
+        css = load_theme_css("report")
+        assert ".sheet-head" in css
+        assert ".sheet-head .t" in css
+        assert ".sheet-head .r" in css
+        # The header joins the code into one card via :has().
+        assert ".highlight:has(.sheet-head)" in css
 
 
 # ═══════════════════════════════════════════════════════════════════════

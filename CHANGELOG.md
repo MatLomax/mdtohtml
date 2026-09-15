@@ -56,6 +56,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cells stay on one line, so a table wider than the content column keeps its
   column widths and scrolls within the card instead of squishing its values onto
   multiple lines.
+- A code fence can carry a titled header via its `title=` attribute (e.g.
+  ```` ```{.python title="Before the fix | converter.py"} ````): under the
+  `report` theme the title renders as a header bar on the code card -- a
+  `left | right` title splits into a left label and a right-aligned meta note --
+  mirroring the diagram card's header, with the header and code joined into one
+  card. Syntax highlighting is preserved and a fence without a title is
+  unchanged.
 
 ### Changed
 
