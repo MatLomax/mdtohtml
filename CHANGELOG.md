@@ -35,6 +35,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Under the `report` theme's dark mode, warning and danger callouts render as a
   tinted card that follows the colour scheme instead of a fixed light-red ground,
   and every callout title meets WCAG AA contrast in both light and dark.
+- The `report` theme's table-of-contents sidebar header sits with balanced
+  spacing: the gap above the "Table of Contents" label now matches the gap below
+  it, so the header no longer reads as top-heavy.
 
 ### Removed
 

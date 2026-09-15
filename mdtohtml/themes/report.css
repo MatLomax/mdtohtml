@@ -859,7 +859,7 @@ hr {
     box-sizing: border-box;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 2rem 0 3rem;
+    padding: 0.85rem 0 3rem;
     background: var(--panel);
     border-right: 1px solid var(--line);
     font-size: 0.8125rem;
