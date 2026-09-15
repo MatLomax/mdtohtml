@@ -394,6 +394,7 @@ blockquote p {
     margin: 20px 0;
     border-radius: 0 8px 8px 0;
     color: var(--ink);
+    box-shadow: var(--shadow);
     page-break-inside: avoid;
 }
 
@@ -997,7 +998,7 @@ body:has(#toc) > main {
         padding: 0;
     }
 
-    pre, table, .mermaid-diagram {
+    pre, table, .mermaid-diagram, .admonition {
         box-shadow: none;
     }
 

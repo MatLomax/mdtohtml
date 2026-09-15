@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `report` theme's warning callout uses an amber accent (matching the
   important callout) instead of sharing the red of failure and danger, so a
   warning is no longer visually identical to a danger.
+- Callouts in the `report` theme carry the same drop shadow as its table, code,
+  and diagram cards, so they lift off the page and stand out (dropped in print,
+  matching the other cards).
 - The `report` theme's table-of-contents sidebar header sits with balanced
   spacing: the gap above the "Table of Contents" label now matches the gap below
   it, so the header no longer reads as top-heavy.
