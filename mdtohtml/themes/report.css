@@ -1,7 +1,8 @@
 /* Report Theme -- Editorial, neutral report layout ported from the JJO report
- * scaffold. Auto-switches light/dark via prefers-color-scheme (no toggle), pins
- * an AA-safe light-red warning card, frames Mermaid diagrams, and ships the
- * eleven-key categorical chip palette (:key[label] -> .pchip.<key>).
+ * scaffold. Auto-switches light/dark via prefers-color-scheme (no toggle), tints
+ * callouts by family with AA-safe titles (amber warning/important, red
+ * failure/danger), frames Mermaid diagrams, and ships the eleven-key categorical
+ * chip palette (:key[label] -> .pchip.<key>).
  */
 
 /* @section: base */
@@ -434,22 +435,23 @@ blockquote p {
 .admonition.quote .admonition-title { color: #616977; }
 .admonition.bug { border-left-color: #a8496f; background: rgba(168, 73, 111, 0.1); }
 .admonition.bug .admonition-title { color: #973f62; }
-.admonition.important { border-left-color: #c07a33; background: rgba(192, 122, 51, 0.12); }
-.admonition.important .admonition-title { color: #8a5210; }
+.admonition.important,
+.admonition.warning { border-left-color: #c07a33; background: rgba(192, 122, 51, 0.12); }
+.admonition.important .admonition-title,
+.admonition.warning .admonition-title { color: #8a5210; }
 
-/* Warn family: a red-tinted card like the sibling callouts, so it reads as a
-   dark card in dark mode instead of a jarring pinned light-red panel. Body text
-   uses --ink (high-contrast in both schemes) and code/links inherit the theme's
-   own styling; the title red is AA-safe on the light tint, and brightened for
-   the dark tint in the dark-mode block below. */
-.admonition.warning,
+/* Failure/danger family: a red-tinted card like the sibling callouts, so it reads
+   as a dark card in dark mode instead of a jarring pinned light-red panel. Body
+   text uses --ink (high-contrast in both schemes) and code/links inherit the
+   theme's own styling; the title red is AA-safe on the light tint, and brightened
+   for the dark tint in the dark-mode block below. Warning is deliberately NOT
+   here -- it rides the amber family (with important) so it never reads as danger. */
 .admonition.failure,
 .admonition.danger {
     border-left-color: #b0432c;
     background: rgba(176, 67, 44, 0.14);
 }
 
-.admonition.warning .admonition-title,
 .admonition.failure .admonition-title,
 .admonition.danger .admonition-title {
     color: #a53a22;
@@ -471,8 +473,8 @@ blockquote p {
     .admonition.question .admonition-title { color: #d4d46a; }
     .admonition.quote .admonition-title { color: #c2c8d2; }
     .admonition.bug .admonition-title { color: #f472b6; }
-    .admonition.important .admonition-title { color: #fbbf24; }
-    .admonition.warning .admonition-title,
+    .admonition.important .admonition-title,
+    .admonition.warning .admonition-title { color: #fbbf24; }
     .admonition.failure .admonition-title,
     .admonition.danger .admonition-title { color: #f2a291; }
 }

@@ -32,9 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Math is now pre-rendered to static KaTeX markup at convert time. The output
   carries the KaTeX stylesheet and fonts but no JavaScript engine; math-free
   documents still ship zero KaTeX bytes.
-- Under the `report` theme's dark mode, warning and danger callouts render as a
-  tinted card that follows the colour scheme instead of a fixed light-red ground,
-  and every callout title meets WCAG AA contrast in both light and dark.
+- Under the `report` theme's dark mode, callouts render as tinted cards that
+  follow the colour scheme rather than any callout keeping a fixed light-red
+  ground, and every callout title meets WCAG AA contrast in both light and dark.
+- The `report` theme's warning callout uses an amber accent (matching the
+  important callout) instead of sharing the red of failure and danger, so a
+  warning is no longer visually identical to a danger.
 - The `report` theme's table-of-contents sidebar header sits with balanced
   spacing: the gap above the "Table of Contents" label now matches the gap below
   it, so the header no longer reads as top-heavy.
