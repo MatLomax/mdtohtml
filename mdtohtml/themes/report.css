@@ -364,10 +364,12 @@ input[type="checkbox"][checked] + .task-list-indicator {
 input[type="checkbox"][checked] + .task-list-indicator::after {
     content: "";
     position: absolute;
-    left: 5px;
-    top: 1px;
-    width: 5px;
-    height: 9px;
+    left: 50%;
+    top: 50%;
+    width: 4px;
+    height: 8px;
+    margin-left: -3px;
+    margin-top: -6px;
     border: solid var(--paper);
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
@@ -571,22 +573,35 @@ pre code {
     align-items: baseline;
     gap: 12px;
     padding: 10px 16px;
-    background: var(--line-soft);
-    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #fefefe, #f7f3ea);
+    border-bottom: 1px solid #e3ddcf;
     font-family: var(--mono);
-    font-size: 12px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+}
+
+/* Both card headers (diagram + code) share one warm-cream bar in light and one
+   cool panel bar in dark, so the two families read alike. The base rules paint
+   the light bar; this flips them for dark, where the cards go to var(--panel). */
+@media (prefers-color-scheme: dark) {
+    .sheet-head,
+    .mermaid-structural .mermaid-header,
+    .mermaid-categorical .mermaid-header {
+        background: var(--line-soft);
+        border-bottom-color: var(--line);
+    }
 }
 
 .sheet-head .t {
     color: var(--ink-soft);
     font-weight: 700;
+    font-size: 11px;
 }
 
 .sheet-head .r {
     color: var(--ink-faint);
     font-weight: 400;
+    font-size: 10px;
 }
 
 .highlight:has(.sheet-head) {
@@ -728,11 +743,12 @@ pre code {
     justify-content: space-between;
     align-items: baseline;
     gap: 12px;
-    margin: 0 0 14px;
-    padding-bottom: 10px;
+    margin: -16px -14px 14px;
+    padding: 11px 16px;
+    background: linear-gradient(180deg, #fefefe, #f7f3ea);
     border-bottom: 1px solid #e3ddcf;
+    border-radius: 11px 11px 0 0;
     font-family: var(--mono);
-    font-size: 12px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
 }
@@ -740,17 +756,18 @@ pre code {
 .mermaid-header .mh-left {
     color: #4a515c;
     font-weight: 700;
+    font-size: 11px;
 }
 
 .mermaid-header .mh-right {
     color: #767e8b;
     font-weight: 400;
+    font-size: 10px;
 }
 
-.mermaid-structural .mermaid-header,
-.mermaid-categorical .mermaid-header {
-    border-bottom-color: var(--line);
-}
+/* Adapted diagram cards ride on ``var(--panel)``, so their header keeps the
+   base warm-cream bar in light and switches to the cool panel bar token in
+   dark (see the shared dark override below). */
 
 .mermaid-structural .mermaid-header .mh-left,
 .mermaid-categorical .mermaid-header .mh-left {

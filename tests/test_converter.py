@@ -1327,6 +1327,30 @@ class TestReportTheme:
         assert "\nsvg {" not in css
         assert "\nsvg{" not in css
 
+    def test_report_css_gives_diagram_header_a_filled_bar(self) -> None:
+        css = load_theme_css("report")
+        m = re.search(r"\n\.mermaid-header \{([^}]*)\}", css)
+        assert m is not None
+        body = m.group(1)
+        # A filled warm bar, not a bare underline.
+        assert "linear-gradient(180deg, #fefefe, #f7f3ea)" in body
+        # Pulled full-bleed to the card edges (card padding is 16px 14px) so the
+        # fill spans the whole width -- the negative margin is what makes it a
+        # bar rather than an inset strip.
+        assert "margin: -16px -14px 14px" in body
+        # Top corners nest inside the card's 12px radius.
+        assert "border-radius: 11px 11px 0 0" in body
+        # In dark the adapted diagram (and code) headers switch to the cool
+        # panel bar token, since those cards ride on var(--panel).
+        assert re.search(
+            r"@media \(prefers-color-scheme: dark\) \{\s*"
+            r"\.sheet-head,\s*"
+            r"\.mermaid-structural \.mermaid-header,\s*"
+            r"\.mermaid-categorical \.mermaid-header \{\s*"
+            r"background: var\(--line-soft\);",
+            css,
+        ) is not None
+
     def test_convert_with_report_theme_succeeds(self) -> None:
         out = convert("# Doc\n\nBody with :teal[tag].\n", "report")
         assert "<!DOCTYPE html>" in out
@@ -1341,6 +1365,23 @@ class TestReportTheme:
         assert 'class="katex"' in out
         # A flowchart is tagged structural so the report theme can recolour it.
         assert 'class="mermaid-diagram mermaid-structural"' in out
+
+    def test_report_css_centres_the_task_checkmark(self) -> None:
+        css = load_theme_css("report")
+        # A ticked box's checkmark is centre-anchored, not pinned to a fixed
+        # low-left offset (which left it visibly off-centre).
+        m = re.search(
+            r"\[checked\] \+ \.task-list-indicator::after \{([^}]*)\}", css
+        )
+        assert m is not None
+        body = m.group(1)
+        # Centre-anchored: left/top 50% put the tick's origin at the box centre,
+        # and the negative margins (half the tick's own box, with a 1px optical
+        # lift) pull it back so it sits true -- both halves are load-bearing.
+        assert "left: 50%" in body
+        assert "top: 50%" in body
+        assert "margin-left: -3px" in body
+        assert "margin-top: -6px" in body
 
 
 # ═══════════════════════════════════════════════════════════════════════

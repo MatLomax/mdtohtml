@@ -27,9 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   column reclaims the width) and expands it again. The state is not persisted, so
   a shared HTML file always opens with its contents showing.
 - A `title:` in a mermaid diagram's front matter is lifted out of the diagram
-  canvas into a styled header bar on the `report` theme's diagram card, and a
-  `left | right` title splits into a left-aligned label and a right-aligned meta
-  note. Mermaid no longer draws its own in-canvas caption for the title.
+  canvas into a filled header bar on the `report` theme's diagram card -- a warm
+  bar spanning the card's full width in light, adapting to a panel bar in dark --
+  and a `left | right` title splits into a left-aligned label and a right-aligned
+  meta note. Mermaid no longer draws its own in-canvas caption for the title.
 - The `report` theme recolours pre-rendered mermaid diagrams to its own palette
   and adapts them to dark mode: structural diagrams (flowchart, sequence, state,
   class, ER) follow the theme, while categorical diagrams (pie, gantt) keep their
@@ -92,8 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   space above the header text matches the space below it instead of the text
   floating high in the cell.
 - Task-list checkboxes in the `report` theme are larger and a ticked box now
-  shows a check knocked out in the page colour on the accent fill, so completed
-  items are easier to spot.
+  shows a centred check knocked out in the page colour on the accent fill, so
+  completed items are easier to spot.
 - The `report` theme's table-of-contents sidebar header sits with balanced
   spacing: the gap above the "Table of Contents" label now matches the gap below
   it, so the header no longer reads as top-heavy.
