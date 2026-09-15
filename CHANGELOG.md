@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `mermaid` fenced code blocks are pre-rendered to inline SVG at convert time,
   so diagrams need no runtime JavaScript and no network call. A diagram that
   fails to parse degrades to its source shown as a code block with a note.
+- The `report` theme recolours pre-rendered mermaid diagrams to its own palette
+  and adapts them to dark mode: structural diagrams (flowchart, sequence, state,
+  class, ER) follow the theme, while categorical diagrams (pie, gantt) keep their
+  own hues and darken in dark mode.
+- Coloured chips gain a dark-mode palette under the `report` theme, each key
+  drawn from its matching callout colour, so pills stay legible and on-theme
+  when the reader's `prefers-color-scheme` is dark.
 - The SIL Open Font License 1.1 covering the bundled KaTeX fonts now ships in
   the bundle (`mdtohtml/katex/OFL.txt`) alongside KaTeX's MIT `LICENSE`.
 
@@ -25,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Math is now pre-rendered to static KaTeX markup at convert time. The output
   carries the KaTeX stylesheet and fonts but no JavaScript engine; math-free
   documents still ship zero KaTeX bytes.
+- Under the `report` theme's dark mode, warning and danger callouts render as a
+  tinted card that follows the colour scheme instead of a fixed light-red ground,
+  and every callout title meets WCAG AA contrast in both light and dark.
 
 ### Removed
 
