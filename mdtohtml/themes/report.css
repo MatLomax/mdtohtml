@@ -395,7 +395,7 @@ blockquote p {
 .admonition.success { border-left-color: #4b7a45; background: rgba(75, 122, 69, 0.1); }
 .admonition.success .admonition-title { color: #3f6d39; }
 .admonition.question { border-left-color: #87872b; background: rgba(135, 135, 43, 0.12); }
-.admonition.question .admonition-title { color: #6f6f22; }
+.admonition.question .admonition-title { color: #606014; }
 .admonition.example { border-left-color: #7a5a9e; background: rgba(122, 90, 158, 0.1); }
 .admonition.example .admonition-title { color: #6d4f8f; }
 .admonition.quote { border-left-color: #7c8492; background: rgba(124, 132, 146, 0.12); }
@@ -403,17 +403,18 @@ blockquote p {
 .admonition.bug { border-left-color: #a8496f; background: rgba(168, 73, 111, 0.1); }
 .admonition.bug .admonition-title { color: #973f62; }
 .admonition.important { border-left-color: #c07a33; background: rgba(192, 122, 51, 0.12); }
-.admonition.important .admonition-title { color: #a5661f; }
+.admonition.important .admonition-title { color: #8a5210; }
 
-/* The warn family pins a fixed light-red ground with AA-safe dark text so it
-   reads in every theme: the token --ink would go near-white in dark mode and
-   fail contrast on a light-red card. Pinned in BOTH modes (no dark override). */
+/* Warn family: a red-tinted card like the sibling callouts, so it reads as a
+   dark card in dark mode instead of a jarring pinned light-red panel. Body text
+   uses --ink (high-contrast in both schemes) and code/links inherit the theme's
+   own styling; the title red is AA-safe on the light tint, and brightened for
+   the dark tint in the dark-mode block below. */
 .admonition.warning,
 .admonition.failure,
 .admonition.danger {
     border-left-color: #b0432c;
-    background: #f6e2dc;
-    color: #5e2114;
+    background: rgba(176, 67, 44, 0.14);
 }
 
 .admonition.warning .admonition-title,
@@ -422,25 +423,26 @@ blockquote p {
     color: #a53a22;
 }
 
-.admonition.warning strong,
-.admonition.failure strong,
-.admonition.danger strong {
-    color: #43160d;
-}
-
-.admonition.warning a,
-.admonition.failure a,
-.admonition.danger a {
-    color: #8a2f1c;
-    text-decoration-color: #cf9484;
-}
-
-.admonition.warning code,
-.admonition.failure code,
-.admonition.danger code {
-    background: #ecccc1;
-    color: #5e2114;
-    border: 0;
+/* The per-type title colours above are darkened tones tuned for the light tint;
+   on the dark tint they must brighten to clear AA (a dark card would otherwise
+   swallow them). Body text already rides --ink, correct in both schemes, so only
+   the titles need overriding. Ordered after the light rules so it wins in dark
+   mode at equal specificity. */
+@media (prefers-color-scheme: dark) {
+    .admonition.note .admonition-title { color: #93c5fd; }
+    .admonition.abstract .admonition-title,
+    .admonition.info .admonition-title { color: #5eead4; }
+    .admonition.todo .admonition-title,
+    .admonition.example .admonition-title { color: #c4b5fd; }
+    .admonition.tip .admonition-title,
+    .admonition.success .admonition-title { color: #86efac; }
+    .admonition.question .admonition-title { color: #d4d46a; }
+    .admonition.quote .admonition-title { color: #c2c8d2; }
+    .admonition.bug .admonition-title { color: #f472b6; }
+    .admonition.important .admonition-title { color: #fbbf24; }
+    .admonition.warning .admonition-title,
+    .admonition.failure .admonition-title,
+    .admonition.danger .admonition-title { color: #f2a291; }
 }
 
 /* @section: code-blocks */
