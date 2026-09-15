@@ -986,8 +986,13 @@ class TestReportThemeFooter:
     def test_report_css_styles_footer_and_file_bullets(self) -> None:
         css = load_theme_css("report")
         assert "footer.doc-footer" in css
-        # The file list gets chevron bullets.
+        # The file list gets chevron bullets -- the light typographic chevron
+        # (U+203A), not a heavy ASCII ``>``.
         assert "footer.doc-footer li::before" in css
+        m = re.search(r"footer\.doc-footer li::before \{([^}]*)\}", css)
+        assert m is not None
+        assert 'content: "›"' in m.group(1)
+        assert 'content: ">"' not in m.group(1)
 
 
 # ═══════════════════════════════════════════════════════════════════════

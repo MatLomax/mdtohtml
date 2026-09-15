@@ -72,7 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   expressible with chips (`:green[done]` / `:red[blocked]`).
 - A `::: footer` ... `:::` container renders a styled document footer: under the
   `report` theme a faint, top-ruled provenance region, with any list inside it
-  getting accent chevron bullets. The footer body is ordinary Markdown (emphasis,
+  getting accent `›` chevron bullets. The footer body is ordinary Markdown (emphasis,
   links, lists all work). Documents without the container are unaffected.
 
 ### Changed
