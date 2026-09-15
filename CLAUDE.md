@@ -18,3 +18,12 @@ next unit.
   fact — committing as you go is precisely how that is avoided.
 - Follow the commit-message style in `.git/COMMIT_STYLE.md`, and stage only the
   paths belonging to the unit being committed.
+
+## Record every change in the CHANGELOG before committing
+
+Every commit that changes behaviour, output, or features (or fixes a bug) must
+add or update its entry under `[Unreleased]` in `CHANGELOG.md` **in the same
+commit** — do not commit a user-facing change without its changelog line.
+Purely internal commits with no user-visible effect — these project rules, the
+`CHANGELOG.md` file itself, test-only changes, tooling — are exempt.
+
