@@ -325,8 +325,9 @@ blockquote p {
 
 /* @section: chips
    The categorical palette, ported verbatim from report_template's PALETTE.
-   Chips carry a light ground with pinned dark ink, so they stay legible on any
-   background and need no dark-mode override. */
+   In light mode a chip is a pale ground with dark ink; in dark mode (the block
+   after the light rules) each key mirrors its callout family -- a subtle hue tint
+   with the brightened callout hue as the border and light text. */
 .pchip {
     display: inline-block;
     font-size: 12px;
@@ -349,6 +350,26 @@ blockquote p {
 .pchip.slate { background: #e4e7ec; border-color: #7c8492; color: #333a44; }
 .pchip.red { background: #f0d9d3; border-color: #b0432c; color: #5e2114; }
 .pchip.gray { background: #eceef2; border-color: #aab1bd; color: #333333; }
+
+/* Dark mode: mirror the callout palette. Each pill takes its family's subtle hue
+   tint as an rgba ground (rgba so it composites over whatever dark surface the
+   chip sits on -- card, table, callout), with the brightened callout hue as both
+   the 1px border and the light text. The colour lives in the accent (as a
+   callout's does in its border + title), not a punchy fill; the light text clears
+   AA on the tint. */
+@media (prefers-color-scheme: dark) {
+    .pchip.blue { background: rgba(63, 111, 150, 0.22); border-color: #93c5fd; color: #93c5fd; }
+    .pchip.green { background: rgba(75, 122, 69, 0.22); border-color: #86efac; color: #86efac; }
+    .pchip.amber { background: rgba(192, 122, 51, 0.22); border-color: #fbbf24; color: #fbbf24; }
+    .pchip.purple { background: rgba(122, 90, 158, 0.22); border-color: #c4b5fd; color: #c4b5fd; }
+    .pchip.teal { background: rgba(63, 128, 121, 0.22); border-color: #5eead4; color: #5eead4; }
+    .pchip.pink { background: rgba(168, 73, 111, 0.22); border-color: #f472b6; color: #f472b6; }
+    .pchip.lime { background: rgba(135, 135, 43, 0.22); border-color: #d4d46a; color: #d4d46a; }
+    .pchip.gold { background: rgba(168, 145, 46, 0.22); border-color: #e6cd82; color: #e6cd82; }
+    .pchip.slate { background: rgba(124, 132, 146, 0.22); border-color: #c2c8d2; color: #c2c8d2; }
+    .pchip.red { background: rgba(176, 67, 44, 0.22); border-color: #f2a291; color: #f2a291; }
+    .pchip.gray { background: rgba(170, 177, 189, 0.22); border-color: #cfd3da; color: #cfd3da; }
+}
 
 /* @section: callouts
    Obsidian callouts render as python-markdown admonitions
