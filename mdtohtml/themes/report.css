@@ -871,17 +871,29 @@ pre code {
     .mermaid-error-note { color: #f2a291; }
 }
 
-/* @section: tables */
-table {
-    border-collapse: collapse;
-    width: 100%;
+/* @section: tables
+   Each table is wrapped in ``.tbl-scroll`` (by the converter). The card framing
+   -- border, radius, shadow -- and the horizontal scroll live on the wrapper, so
+   a table wider than the content column keeps its column widths and scrolls
+   inside the card rather than overflowing the page. ``overflow-x: auto`` also
+   clips the table's square corners to the wrapper's radius. The table itself
+   drops to ``min-width: min-content`` so a narrow table still fills the width
+   while a wide one grows to its natural size and scrolls. */
+.tbl-scroll {
     margin: 1em 0;
-    font-size: 14px;
+    overflow-x: auto;
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 10px;
-    overflow: hidden;
     box-shadow: var(--shadow);
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: min-content;
+    font-size: 14px;
+    background: var(--panel);
 }
 
 thead th {
@@ -904,6 +916,11 @@ th, td {
     padding: 8px 12px;
     border-bottom: 1px solid var(--line-soft);
     vertical-align: top;
+    /* Keep each cell on one line so columns hold their width: a wide table then
+       grows past the content column and scrolls inside ``.tbl-scroll`` instead
+       of squishing values onto multiple lines. A narrow table's single-line
+       min-content is smaller than the column, so ``width: 100%`` still fills. */
+    white-space: nowrap;
 }
 
 tbody tr:last-child td {
@@ -1195,8 +1212,19 @@ body:has(#toc) > main {
         padding: 0;
     }
 
-    pre, table, .mermaid-diagram, .admonition {
+    pre, .tbl-scroll, .mermaid-diagram, .admonition {
         box-shadow: none;
+    }
+
+    /* Paper has no scrollbar, so an off-page ``.tbl-scroll`` would silently clip
+       its right-hand columns. On print the wrapper stops clipping and cells wrap
+       so a wide table reflows to fit the page instead of losing columns. */
+    .tbl-scroll {
+        overflow-x: visible;
+    }
+
+    th, td {
+        white-space: normal;
     }
 
     /* The band's emphasis rides an inset box-shadow and a background tint, both

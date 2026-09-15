@@ -51,6 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   useful directly below a diagram or code block. A `~ ...` line inside a code
   block, or an empty one, is left as literal text; `~~strikethrough~~` is
   unaffected.
+- Tables are wrapped in a horizontal-scroll container (`.tbl-scroll`). Under the
+  `report` theme the card framing and scrolling now live on the wrapper and
+  cells stay on one line, so a table wider than the content column keeps its
+  column widths and scrolls within the card instead of squishing its values onto
+  multiple lines.
 
 ### Changed
 

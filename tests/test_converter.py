@@ -11,6 +11,7 @@ from mdtohtml.converter import (
     TOC_JS,
     _build_toc_nav,
     _extract_headings,
+    _wrap_tables,
     convert,
     extract_title,
     list_themes,
@@ -928,6 +929,71 @@ class TestMdToHtmlChips:
         assert "alert(1)" not in html
         # The chip wrapper itself is intact; only the payload is neutralised.
         assert 'class="pchip blue"' in html
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Table scroll wrapper (.tbl-scroll)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestWrapTables:
+    def test_wrap_tables_wraps_a_table(self) -> None:
+        wrapped = _wrap_tables("<table><tr><td>1</td></tr></table>")
+        assert wrapped == (
+            '<div class="tbl-scroll"><table><tr><td>1</td></tr></table></div>'
+        )
+
+    def test_no_table_is_untouched(self) -> None:
+        assert _wrap_tables("<p>no table here</p>") == "<p>no table here</p>"
+
+    def test_two_tables_wrapped_separately_not_nested(self) -> None:
+        wrapped = _wrap_tables("<table><tr><td>1</td></tr></table>"
+                               "<table><tr><td>2</td></tr></table>")
+        assert wrapped.count('<div class="tbl-scroll">') == 2
+        assert '<div class="tbl-scroll"><div class="tbl-scroll"' not in wrapped
+
+
+class TestMdToHtmlTableScroll:
+    def test_table_is_wrapped_in_scroll_container(self) -> None:
+        out = md_to_html("| A | B |\n|---|---|\n| 1 | 2 |")
+        assert re.search(r'<div class="tbl-scroll">\s*<table', out)
+        assert out.count("tbl-scroll") == 1
+        assert out.find("</table>") < out.find("</div>")
+
+    def test_katex_mtable_is_not_wrapped(self) -> None:
+        # KaTeX emits MathML ``<mtable>``, not HTML ``<table>`` -- it must not be
+        # caught by the table-wrap pass.
+        out = md_to_html(r"$$\begin{pmatrix} a & b \\ c & d \end{pmatrix}$$")
+        assert "tbl-scroll" not in out
+
+
+class TestReportThemeTableScroll:
+    def test_card_framing_lives_on_the_wrapper(self) -> None:
+        css = load_theme_css("report")
+        scroll = css[css.index(".tbl-scroll {"):]
+        scroll = scroll[: scroll.index("}")]
+        assert "overflow-x: auto" in scroll
+        assert "border: 1px solid var(--line)" in scroll
+        assert "box-shadow: var(--shadow)" in scroll
+
+    def test_cells_keep_one_line_for_scroll(self) -> None:
+        css = load_theme_css("report")
+        # Cells stay single-line so wide tables scroll instead of squishing.
+        assert "white-space: nowrap" in css
+
+    def test_print_suppresses_wrapper_shadow(self) -> None:
+        css = load_theme_css("report")
+        print_block = css[css.index("@media print"):]
+        # The shadow now lives on the wrapper, so print suppresses .tbl-scroll.
+        assert ".tbl-scroll" in print_block
+
+    def test_print_reflows_wide_tables_instead_of_clipping(self) -> None:
+        # Paper has no scrollbar, so on print cells wrap and the wrapper stops
+        # clipping, letting a wide table reflow to fit instead of losing columns.
+        css = load_theme_css("report")
+        print_block = css[css.index("@media print"):]
+        assert "overflow-x: visible" in print_block
+        assert "white-space: normal" in print_block
 
 
 # ═══════════════════════════════════════════════════════════════════════

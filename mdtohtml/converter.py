@@ -512,6 +512,32 @@ def _prerender_math(html: str) -> str:
     return html
 
 
+# ── Table Scroll Wrapping ──
+
+
+# A whole ``<table>...</table>`` element. Non-greedy: Markdown tables never nest,
+# so each match is one complete table. Only real Markdown tables are matched --
+# KaTeX emits MathML ``<mtable>`` (not HTML ``<table>``) and mermaid is still a
+# placeholder at this point, so neither is touched.
+_TABLE_RE = re.compile(r"<table\b[^>]*>.*?</table>", re.S)
+
+
+def _wrap_tables(html: str) -> str:
+    """Wrap each ``<table>`` in a ``<div class="tbl-scroll">`` scroll container.
+
+    The ``tables`` extension emits a bare ``<table>`` with no wrapper. A table
+    wider than the content column would otherwise overflow the page (the card's
+    corner-clipping ``overflow`` on the table itself hid the overflow). Wrapping
+    each table lets the report theme put the card framing (border, radius,
+    shadow) and ``overflow-x: auto`` on the wrapper, so a wide table keeps its
+    column widths and scrolls horizontally within the card. The wrapper ``div``
+    and its class survive ``nh3.clean``.
+    """
+    return _TABLE_RE.sub(
+        lambda m: f'<div class="tbl-scroll">{m.group(0)}</div>', html
+    )
+
+
 # ── Core Functions ──
 
 
@@ -747,6 +773,10 @@ def md_to_html(
 
         # Step 3: Pre-render math into static KaTeX markup
         html = _prerender_math(html)
+
+        # Step 3a: Wrap each table in a horizontal-scroll container so a wide
+        # table scrolls within the card instead of overflowing the page.
+        html = _wrap_tables(html)
 
         # Step 4: Sanitise with nh3
         html = nh3.clean(
