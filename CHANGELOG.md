@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A bundled example report (`examples/report.md` and its self-contained
   `examples/report.html`) exercising every supported component under the `report`
   theme: the front-matter hero, callouts, tables with chips, task lists, math,
-  and titled mermaid diagrams.
+  titled mermaid diagrams, section kickers, captions, a banded `hl_lines` code
+  block, a titled code sheet, a keyed table, and a document footer.
 - The `report` theme's table-of-contents sidebar has a collapse/expand toggle:
   the button in the sidebar header collapses it to a slim rail (the content
   column reclaims the width) and expands it again. The state is not persisted, so
