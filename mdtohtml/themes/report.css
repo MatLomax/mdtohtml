@@ -306,10 +306,10 @@ li > ol {
 
 .task-list-indicator {
     display: inline-block;
-    width: 13px;
-    height: 13px;
-    border: 1.5px solid var(--accent);
-    border-radius: 3px;
+    width: 19px;
+    height: 19px;
+    border: 2px solid var(--accent);
+    border-radius: 4px;
     margin-right: 0.5em;
     vertical-align: middle;
     position: relative;
@@ -319,6 +319,21 @@ li > ol {
 input[type="checkbox"][checked] + .task-list-indicator {
     background: var(--accent);
     border-color: var(--accent);
+}
+
+/* A ticked box shows a check knocked out in the page colour: an L-shaped stroke
+   (border-right + border-bottom) rotated 45deg, drawn in --paper so the tick
+   reads as cut out of the accent fill in both light and dark. */
+input[type="checkbox"][checked] + .task-list-indicator::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 5px;
+    height: 9px;
+    border: solid var(--paper);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
 }
 
 /* @section: blockquotes */
