@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with an accent tint and an inset accent rule down its left edge, so the line
   under discussion stands out from the rest of the listing.
 - A section kicker: a `^ Label` line immediately above a heading renders as a
-  small mono-uppercase accent label leading the section (`.sec-label` under the
+  small muted mono-uppercase label leading the section (`.sec-label` under the
   `report` theme), with the heading tucked against it. A caret line that is not
   directly above a heading, or one inside a code block, is left as literal text.
 - A caption: a `~ text` marker line renders as a small mono, faint caption
@@ -77,6 +77,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Unordered lists in the `report` theme use an accent `›` chevron as their
+  bullet -- the same marker as the document footer, made the house bullet --
+  with nested levels stepping back to a more transparent shade. Ordered lists
+  keep their numbers, and task lists and the table-of-contents keep their own
+  markers.
 - Math is now pre-rendered to static KaTeX markup at convert time. The output
   carries the KaTeX stylesheet and fonts but no JavaScript engine; math-free
   documents still ship zero KaTeX bytes.

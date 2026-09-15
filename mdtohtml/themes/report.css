@@ -212,7 +212,7 @@ h1 + p {
     letter-spacing: 0.14em;
     text-transform: uppercase;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--ink-faint);
     margin: 48px 0 0;
 }
 
@@ -319,8 +319,35 @@ ul, ol {
     padding-left: 1.6em;
 }
 
+ul {
+    list-style: none;
+}
+
 li {
     margin-bottom: 0.3em;
+}
+
+/* Unordered lists take the accent chevron as their marker -- the same glyph the
+   footer uses, made the house bullet -- sitting in the list's left gutter.
+   Ordered lists keep their numbers; task-list items (their own checkbox) and the
+   TOC (suppressed below) are excluded, and the footer keeps its own later rule. */
+ul > li:not(.task-list-item) {
+    position: relative;
+}
+
+ul > li:not(.task-list-item)::before {
+    content: "›";
+    position: absolute;
+    left: -1.1em;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-weight: 700;
+}
+
+/* Nested levels -- a ul inside any list -- step back to a more transparent
+   shade so depth reads clearly. */
+:is(ol, ul) ul > li:not(.task-list-item)::before {
+    opacity: 0.45;
 }
 
 li > ul,
@@ -1189,6 +1216,11 @@ hr {
 
 #toc li {
     margin: 0;
+}
+
+/* The TOC keeps its own layout -- no chevron marker from the body-list rule. */
+#toc li::before {
+    content: none;
 }
 
 #toc a {

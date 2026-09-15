@@ -1300,6 +1300,12 @@ class TestReportThemeSectionKicker:
         assert ".sec-label" in css
         # The following heading is tucked against the kicker.
         assert ".sec-label + h2" in css
+        # The body kicker is muted (--ink-faint), NOT the gold accent -- the
+        # accent eyebrow is reserved for the hero.
+        m = re.search(r"\n\.sec-label \{([^}]*)\}", css)
+        assert m is not None
+        assert "color: var(--ink-faint)" in m.group(1)
+        assert "var(--accent)" not in m.group(1)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -1370,6 +1376,29 @@ class TestReportTheme:
         assert 'class="katex"' in out
         # A flowchart is tagged structural so the report theme can recolour it.
         assert 'class="mermaid-diagram mermaid-structural"' in out
+
+    def test_report_css_gives_body_lists_chevron_bullets(self) -> None:
+        css = load_theme_css("report")
+        # The disc is removed so only the chevron marker shows (no double bullet).
+        assert re.search(r"\nul \{[^}]*list-style: none", css) is not None
+        # Body unordered lists use the accent chevron as their marker. Anchored to
+        # a line start so it lands on the general rule, not the nested one.
+        m = re.search(
+            r"\nul > li:not\(\.task-list-item\)::before \{([^}]*)\}", css
+        )
+        assert m is not None
+        assert 'content: "›"' in m.group(1)
+        assert "color: var(--accent)" in m.group(1)
+        # Nested levels (a ul inside any list) step back to a transparent shade.
+        m2 = re.search(
+            r":is\(ol, ul\) ul > li:not\(\.task-list-item\)::before \{([^}]*)\}",
+            css,
+        )
+        assert m2 is not None
+        assert "opacity" in m2.group(1)
+        # Task-list items are excluded (their own checkbox marker); the TOC opts
+        # out; ordered lists keep their numbers (never matched by ``ul > li``).
+        assert re.search(r"#toc li::before \{[^}]*content: none", css) is not None
 
     def test_report_css_centres_the_task_checkmark(self) -> None:
         css = load_theme_css("report")
