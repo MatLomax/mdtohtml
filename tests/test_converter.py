@@ -1306,6 +1306,21 @@ class TestReportThemeSectionKicker:
         assert m is not None
         assert "color: var(--ink-faint)" in m.group(1)
         assert "var(--accent)" not in m.group(1)
+        # It matches the hero eyebrow's size and font -- only the colour differs.
+        eb = re.search(r"\n\.eyebrow \{([^}]*)\}", css)
+        assert eb is not None
+        for prop in (
+            "font-size: 12px",
+            "letter-spacing: 0.18em",
+            "font-family: var(--mono)",
+            "text-transform: uppercase",
+        ):
+            assert prop in m.group(1)
+            assert prop in eb.group(1)
+        # Neither declares an explicit weight -- both rely on the normal (400)
+        # default, so re-adding font-weight: 700 to the kicker would diverge.
+        assert "font-weight" not in m.group(1)
+        assert "font-weight" not in eb.group(1)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -1399,6 +1414,24 @@ class TestReportTheme:
         # Task-list items are excluded (their own checkbox marker); the TOC opts
         # out; ordered lists keep their numbers (never matched by ``ul > li``).
         assert re.search(r"#toc li::before \{[^}]*content: none", css) is not None
+
+    def test_report_css_numbers_ordered_lists_with_accent_counter(self) -> None:
+        css = load_theme_css("report")
+        # Ordered lists render a mono accent counter, not the default marker.
+        assert re.search(r"\nol \{[^}]*list-style: none", css) is not None
+        m = re.search(r"\nol > li::before \{([^}]*)\}", css)
+        assert m is not None
+        assert "counter(ol-item)" in m.group(1)
+        assert "color: var(--accent)" in m.group(1)
+        assert "font-family: var(--mono)" in m.group(1)
+        # Footnotes keep their plain decimal marker (the container class is the
+        # singular ``footnote``), excluded from the accent counter.
+        assert re.search(
+            r"\.footnote li::before \{[^}]*content: none", css
+        ) is not None
+        assert re.search(
+            r"\.footnote ol \{[^}]*list-style: decimal", css
+        ) is not None
 
     def test_report_css_centres_the_task_checkmark(self) -> None:
         css = load_theme_css("report")

@@ -208,10 +208,9 @@ h1 + p {
    tucked against it, so the pair reads as one unit. */
 .sec-label {
     font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.14em;
+    font-size: 12px;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    font-weight: 700;
     color: var(--ink-faint);
     margin: 48px 0 0;
 }
@@ -348,6 +347,29 @@ ul > li:not(.task-list-item)::before {
    shade so depth reads clearly. */
 :is(ol, ul) ul > li:not(.task-list-item)::before {
     opacity: 0.45;
+}
+
+/* Ordered lists render their number as a mono accent counter in the same gutter
+   as the unordered chevron, right-aligned against the list text so the marker
+   sits the same distance from the item whatever its digit count. */
+ol {
+    list-style: none;
+    counter-reset: ol-item;
+}
+
+ol > li {
+    counter-increment: ol-item;
+    position: relative;
+}
+
+ol > li::before {
+    content: counter(ol-item) ".";
+    position: absolute;
+    right: 100%;
+    margin-right: 0.5em;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-weight: 700;
 }
 
 li > ul,
@@ -1050,6 +1072,16 @@ tbody tr:last-child td {
 
 .footnotes li {
     margin-bottom: 0.4em;
+}
+
+/* The footnote list keeps plain decimal markers -- not the body OL accent
+   counter. The rendered container class is singular (``footnote``). */
+.footnote ol {
+    list-style: decimal;
+}
+
+.footnote li::before {
+    content: none;
 }
 
 .footnotes hr {
