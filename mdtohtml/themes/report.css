@@ -970,6 +970,15 @@ tbody tr:last-child td {
     border-bottom: none;
 }
 
+/* A table opted-in with a ``{.keyed}`` line gets an accent key column: its first
+   body cell in each row reads as a mono, accent row-label (the scaffold's
+   ``td.ends``). The header cell is left as the normal uppercase column label. */
+.tbl-scroll.keyed tbody td:first-child {
+    font-family: var(--mono);
+    font-weight: 700;
+    color: var(--accent);
+}
+
 /* @section: footnotes */
 .footnote-ref {
     font-size: 0.75em;

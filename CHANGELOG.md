@@ -63,6 +63,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mirroring the diagram card's header, with the header and code joined into one
   card. Syntax highlighting is preserved and a fence without a title is
   unchanged.
+- A top-level table can opt in to an accent key column with a `{.keyed}` line
+  directly above it: under the `report` theme the table's first body column
+  renders as a mono accent row-key. A `{.keyed}` line not above a real table, or
+  one inside a code block, is left as literal text. Coloured status cells remain
+  expressible with chips (`:green[done]` / `:red[blocked]`).
 
 ### Changed
 

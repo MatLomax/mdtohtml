@@ -20,6 +20,7 @@ from mdtohtml.converter import (
     md_to_html,
     preprocess_captions,
     preprocess_chips,
+    preprocess_keyed_tables,
     preprocess_obsidian_callouts,
     preprocess_section_kickers,
     preprocess_wikilinks,
@@ -1025,6 +1026,63 @@ class TestWrapTables:
                                "<table><tr><td>2</td></tr></table>")
         assert wrapped.count('<div class="tbl-scroll">') == 2
         assert '<div class="tbl-scroll"><div class="tbl-scroll"' not in wrapped
+
+    def test_keyed_paragraph_adds_keyed_class_and_is_consumed(self) -> None:
+        wrapped = _wrap_tables(
+            "<p>{.keyed}</p><table><tr><td>1</td></tr></table>"
+        )
+        assert wrapped == (
+            '<div class="tbl-scroll keyed"><table><tr><td>1</td></tr></table></div>'
+        )
+
+    def test_keyed_paragraph_without_table_is_left_literal(self) -> None:
+        # A ``{.keyed}`` paragraph not before a table is left in place (renders as
+        # literal text), never dropped.
+        html = "<p>{.keyed}</p><p>no table</p>"
+        assert _wrap_tables(html) == html
+
+
+class TestPreprocessKeyedTables:
+    def test_marker_before_table_is_separated_and_kept(self) -> None:
+        # The line is kept literal, with a blank line inserted so the table below
+        # is not lazy-merged into it.
+        result = preprocess_keyed_tables("{.keyed}\n| A | B |\n|---|---|\n| 1 | 2 |")
+        assert result.startswith("{.keyed}\n\n| A | B |")
+
+    def test_already_separated_marker_is_unchanged(self) -> None:
+        md = "{.keyed}\n\nJust a paragraph."
+        assert preprocess_keyed_tables(md) == md
+
+    def test_marker_inside_code_is_untouched(self) -> None:
+        md = "```\n{.keyed}\n| A |\n```"
+        assert preprocess_keyed_tables(md) == md
+
+
+class TestMdToHtmlKeyedTable:
+    def test_keyed_table_wrapper_has_keyed_class(self) -> None:
+        out = md_to_html("{.keyed}\n| K | V |\n|---|---|\n| a | b |")
+        assert 'class="tbl-scroll keyed">' in out
+
+    def test_keyed_above_pipeless_table_form(self) -> None:
+        # Header + delimiter without edge pipes still keys end-to-end.
+        out = md_to_html("{.keyed}\nK | V\n---|---\na | b")
+        assert 'class="tbl-scroll keyed">' in out
+
+    def test_keyed_above_malformed_table_stays_literal(self) -> None:
+        # A near-table Markdown does not actually build leaves ``{.keyed}`` as
+        # literal text (never silently dropped) and applies no keyed class.
+        out = md_to_html("{.keyed}\n| A | B | C |\n|---|---|\n| 1 | 2 | 3 |")
+        assert "<p>{.keyed}</p>" in out
+        assert "tbl-scroll keyed" not in out
+
+    def test_chips_work_in_table_cells(self) -> None:
+        # Status cells are covered by chips (the accent key column is the new bit).
+        out = md_to_html("| Task | Status |\n|------|--------|\n| Build | :green[done] |")
+        assert '<span class="pchip green">done</span>' in out
+
+    def test_report_css_styles_keyed_key_column(self) -> None:
+        css = load_theme_css("report")
+        assert ".tbl-scroll.keyed tbody td:first-child" in css
 
 
 class TestMdToHtmlTableScroll:

@@ -447,6 +447,43 @@ def preprocess_captions(md_text: str) -> str:
     return _restore_code("\n".join(out), placeholders)
 
 
+# ── Keyed Table Preprocessing ──
+
+
+# A ``{.keyed}`` opt-in line, on its own, marking the table that follows as having
+# an accent key column (its first column styled like the scaffold's ``td.ends``).
+# Markdown ``attr_list`` cannot attach a class to a table, so this line is the
+# opt-in. It is kept as literal text and merely separated into its own paragraph;
+# :func:`_wrap_tables` keys the table only when a real ``<table>`` actually
+# follows, so a ``{.keyed}`` that is not above a genuine table stays visible as
+# literal text rather than being silently consumed.
+_KEYED_MARKER_RE = re.compile(r"^\{\.keyed\}[ \t]*$")
+
+
+def preprocess_keyed_tables(md_text: str) -> str:
+    """Separate a ``{.keyed}`` opt-in line into its own paragraph.
+
+    A ``{.keyed}`` line directly above a table would otherwise be lazy-merged
+    into the table by Markdown (any text touching a table breaks it), so a blank
+    line is inserted after it. The line itself is left intact -- it converts to a
+    ``<p>{.keyed}</p>`` paragraph that :func:`_wrap_tables` turns into the
+    ``keyed`` class when (and only when) a ``<table>`` immediately follows;
+    otherwise it renders as the literal text ``{.keyed}``. A ``{.keyed}`` inside
+    code is protected, and one nested in a blockquote/list (not at column 0) is
+    left untouched -- keyed tables are a top-level affordance.
+    """
+    protected, placeholders = _protect_code(md_text)
+    lines = protected.split("\n")
+    out: list[str] = []
+    n = len(lines)
+    for i, line in enumerate(lines):
+        out.append(line)
+        if _KEYED_MARKER_RE.match(line) and i + 1 < n and lines[i + 1].strip():
+            # A blank line so the following table isn't merged into this line.
+            out.append("")
+    return _restore_code("\n".join(out), placeholders)
+
+
 # ── Math Delimiter Rewriting ──
 
 # pymdownx.arithmatex generic mode wraps each expression in an
@@ -515,11 +552,15 @@ def _prerender_math(html: str) -> str:
 # ── Table Scroll Wrapping ──
 
 
-# A whole ``<table>...</table>`` element. Non-greedy: Markdown tables never nest,
-# so each match is one complete table. Only real Markdown tables are matched --
-# KaTeX emits MathML ``<mtable>`` (not HTML ``<table>``) and mermaid is still a
-# placeholder at this point, so neither is touched.
-_TABLE_RE = re.compile(r"<table\b[^>]*>.*?</table>", re.S)
+# A whole ``<table>...</table>``, optionally preceded by the ``<p>{.keyed}</p>``
+# paragraph a ``{.keyed}`` opt-in line converts to. Non-greedy: Markdown tables
+# never nest, so each match is one complete table. Only real Markdown tables are
+# matched -- KaTeX emits MathML ``<mtable>`` (not HTML ``<table>``) and mermaid is
+# still a placeholder at this point. A ``<p>{.keyed}</p>`` not immediately before a
+# ``<table>`` is left untouched, so it renders as the literal text ``{.keyed}``.
+_TABLE_WRAP_RE = re.compile(
+    r'(<p>\{\.keyed\}</p>\s*)?(<table\b[^>]*>.*?</table>)', re.S
+)
 
 
 def _wrap_tables(html: str) -> str:
@@ -532,10 +573,18 @@ def _wrap_tables(html: str) -> str:
     shadow) and ``overflow-x: auto`` on the wrapper, so a wide table keeps its
     column widths and scrolls horizontally within the card. The wrapper ``div``
     and its class survive ``nh3.clean``.
+
+    A table immediately preceded by a ``<p>{.keyed}</p>`` paragraph (from a
+    ``{.keyed}`` opt-in line) gets the extra ``keyed`` class so the theme styles
+    its first column as an accent key, and that paragraph is consumed. A
+    ``{.keyed}`` paragraph with no table after it is left in place -- it renders
+    as literal text, never silently dropped.
     """
-    return _TABLE_RE.sub(
-        lambda m: f'<div class="tbl-scroll">{m.group(0)}</div>', html
-    )
+    def _wrap(m: re.Match[str]) -> str:
+        cls = "tbl-scroll keyed" if m.group(1) else "tbl-scroll"
+        return f'<div class="{cls}">{m.group(2)}</div>'
+
+    return _TABLE_WRAP_RE.sub(_wrap, html)
 
 
 # ── Code Sheet Header ──
@@ -811,6 +860,9 @@ def md_to_html(
 
         # Step 1d: Convert ``~ text`` marker lines to captions (``.caption``).
         md_text = preprocess_captions(md_text)
+
+        # Step 1e: Mark a ``{.keyed}`` table for an accent key column.
+        md_text = preprocess_keyed_tables(md_text)
 
         # Step 2: Convert markdown to HTML
         md_converter = markdown.Markdown(
