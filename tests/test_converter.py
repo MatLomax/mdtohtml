@@ -1433,6 +1433,16 @@ class TestReportTheme:
             r"\.footnote ol \{[^}]*list-style: decimal", css
         ) is not None
 
+    def test_report_css_styles_footnote_block_with_singular_class(self) -> None:
+        css = load_theme_css("report")
+        # The rendered container is the singular ``footnote``; the dead plural
+        # ``.footnotes`` selectors must not linger (they never matched).
+        assert re.search(r"\.footnotes\b", css) is None
+        m = re.search(r"\n\.footnote \{([^}]*)\}", css)
+        assert m is not None
+        assert "border-top:" in m.group(1)
+        assert "font-size: 13px" in m.group(1)
+
     def test_report_css_centres_the_task_checkmark(self) -> None:
         css = load_theme_css("report")
         # A ticked box's checkmark is centre-anchored, not pinned to a fixed

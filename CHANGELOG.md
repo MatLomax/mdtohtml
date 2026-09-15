@@ -110,6 +110,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accent gold as a solid highlighter with dark ink, so highlights stand out
   instead of fading into a dim tint.
 
+### Fixed
+
+- Footnotes under the `report` theme now render their intended styling -- a
+  faint top-ruled separator (in place of the default horizontal rule) and
+  smaller muted text -- rather than falling back to the browser's plain footnote
+  block.
+
 ### Removed
 
 - Client-side KaTeX rendering: the in-browser engine, the `auto-render`
