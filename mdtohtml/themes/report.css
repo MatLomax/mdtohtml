@@ -225,6 +225,19 @@ h1 + p {
     margin-top: 4px;
 }
 
+/* @section: caption
+   A ``~ text`` marker line renders as ``<p class="caption">`` -- a small mono,
+   faint caption, typically sitting right under a diagram or code card. The
+   negative top margin tucks it close to the block above; the bottom margin
+   restores normal flow to the following content. */
+.caption {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-faint);
+    margin: -0.4em 0 1.4em;
+}
+
 /* @section: paragraph */
 p {
     margin: 0.7em 0;

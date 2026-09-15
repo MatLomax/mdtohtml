@@ -402,6 +402,51 @@ def preprocess_section_kickers(md_text: str) -> str:
     return _restore_code("\n".join(out), placeholders)
 
 
+# ── Caption Preprocessing ──
+
+
+# A caption marker: a line ``~ text`` renders as a small mono/faint caption
+# (``.caption``), typically placed right below a diagram or code block. A single
+# leading ``~`` followed by a space is never Markdown (``~~del~~`` needs two, a
+# ``~sub~`` has no space, a ``~~~`` fence needs three), so it claims the line
+# cleanly.
+_CAPTION_RE = re.compile(r"^~ (.+)$")
+
+
+def preprocess_captions(md_text: str) -> str:
+    """Convert ``~ text`` marker lines to a ``.caption`` paragraph.
+
+    Converts::
+
+        ~ Green is the working path; rust is the stranded one
+
+    to ``<p class="caption">Green is the working path; ...</p>``. It is a general
+    standalone marker -- most useful directly under a diagram or code card, but
+    it fires on any ``~ ...`` line outside code; a line whose caption is empty
+    once trimmed is left untouched.
+
+    Keep a caption to short plain text: it is emitted as HTML-escaped text, so it
+    can never inject markup, but this pass runs after the chip and wikilink
+    passes, so ``:key[..]`` / ``[[..]]`` / Markdown syntax inside a caption is not
+    meaningfully rendered (escaped as literal text). Fenced and inline code are
+    protected so a ``~ ...`` example inside code is never rewritten.
+    """
+    protected, placeholders = _protect_code(md_text)
+    lines = protected.split("\n")
+    out: list[str] = []
+    for line in lines:
+        m = _CAPTION_RE.match(line)
+        caption = _html.escape(m.group(1).strip(), quote=False) if m else ""
+        if caption:
+            out.append(f'<p class="caption">{caption}</p>')
+            # A blank line so Python-Markdown treats the ``<p>`` as its own raw
+            # HTML block rather than folding it into an adjacent paragraph.
+            out.append("")
+        else:
+            out.append(line)
+    return _restore_code("\n".join(out), placeholders)
+
+
 # ── Math Delimiter Rewriting ──
 
 # pymdownx.arithmatex generic mode wraps each expression in an
@@ -688,6 +733,9 @@ def md_to_html(
         # Step 1c: Convert ``^ Label`` kicker lines above a heading to section
         # labels (``.sec-label``).
         md_text = preprocess_section_kickers(md_text)
+
+        # Step 1d: Convert ``~ text`` marker lines to captions (``.caption``).
+        md_text = preprocess_captions(md_text)
 
         # Step 2: Convert markdown to HTML
         md_converter = markdown.Markdown(

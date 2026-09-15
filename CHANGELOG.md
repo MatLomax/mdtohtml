@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   small mono-uppercase accent label leading the section (`.sec-label` under the
   `report` theme), with the heading tucked against it. A caret line that is not
   directly above a heading, or one inside a code block, is left as literal text.
+- A caption: a `~ text` marker line renders as a small mono, faint caption
+  (`.caption` under the `report` theme), tucked under the block above it -- most
+  useful directly below a diagram or code block. A `~ ...` line inside a code
+  block, or an empty one, is left as literal text; `~~strikethrough~~` is
+  unaffected.
 
 ### Changed
 

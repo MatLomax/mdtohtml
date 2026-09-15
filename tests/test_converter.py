@@ -16,6 +16,7 @@ from mdtohtml.converter import (
     list_themes,
     load_theme_css,
     md_to_html,
+    preprocess_captions,
     preprocess_chips,
     preprocess_obsidian_callouts,
     preprocess_section_kickers,
@@ -927,6 +928,58 @@ class TestMdToHtmlChips:
         assert "alert(1)" not in html
         # The chip wrapper itself is intact; only the payload is neutralised.
         assert 'class="pchip blue"' in html
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Captions (~ text -> .caption)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestPreprocessCaptions:
+    def test_marker_becomes_caption(self) -> None:
+        result = preprocess_captions("~ Green is the working path")
+        assert result == '<p class="caption">Green is the working path</p>\n'
+
+    def test_strikethrough_is_not_a_caption(self) -> None:
+        # ``~~del~~`` (two tildes) and ``~sub~`` are the tilde extension; only a
+        # single ``~ `` (tilde + space) at line start is a caption marker.
+        assert preprocess_captions("~~struck~~") == "~~struck~~"
+
+    def test_marker_inside_code_fence_untouched(self) -> None:
+        md = "```\n~ inside code\n```"
+        assert preprocess_captions(md) == md
+
+    def test_empty_caption_stays_literal(self) -> None:
+        assert preprocess_captions("~   \n") == "~   \n"
+
+    def test_caption_is_html_escaped(self) -> None:
+        result = preprocess_captions("~ a <b> & c")
+        assert "a &lt;b&gt; &amp; c" in result
+        assert "<b>" not in result
+
+
+class TestMdToHtmlCaptions:
+    def test_caption_after_code_block_renders_in_order(self) -> None:
+        out = md_to_html("```python\nx = 1\n```\n~ The build step")
+        assert 'class="caption"' in out
+        assert out.find('class="highlight"') < out.find('class="caption"')
+
+    def test_caption_after_mermaid_renders(self) -> None:
+        out = md_to_html("```mermaid\ngraph TD; A-->B\n```\n~ The pipeline")
+        assert 'class="caption"' in out
+        assert out.find("mermaid-diagram") < out.find('class="caption"')
+
+    def test_hostile_caption_is_escaped(self) -> None:
+        out = md_to_html("~ <img src=x onerror=alert(1)>")
+        assert "<img" not in out
+        assert "&lt;img src=x onerror=alert(1)&gt;" in out
+        assert 'class="caption"' in out
+
+
+class TestReportThemeCaption:
+    def test_report_css_styles_caption(self) -> None:
+        css = load_theme_css("report")
+        assert ".caption" in css
 
 
 # ═══════════════════════════════════════════════════════════════════════
