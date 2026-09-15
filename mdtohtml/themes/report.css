@@ -522,6 +522,25 @@ pre code {
     margin: 0;
 }
 
+/* A line flagged via ``hl_lines`` is banded so the eye lands on it: an accent
+   tint with an inset accent rule down its left edge. ``inline-block`` +
+   ``min-width: 100%`` makes the band at least the code panel's width AND grow
+   with a line wider than the panel, so the band still covers the whole line once
+   ``pre`` is scrolled horizontally (a plain ``display: block`` box stops at the
+   static width and leaves the scrolled tail unbanded). It bleeds by the panel's
+   16px horizontal padding so it reads as a highlighted row, not an inline blob;
+   the 13px left padding leaves room for the 3px inset rule. The accent-soft
+   ground auto-switches with the scheme -- subtle on the light panel, legible on
+   the dark one. */
+.highlight .hll {
+    display: inline-block;
+    min-width: 100%;
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 var(--accent);
+    margin: 0 -16px;
+    padding: 0 16px 0 13px;
+}
+
 /* Pygments token classes -- light palette. Dark tones are overridden in the
    prefers-color-scheme block below. */
 .highlight .k, .highlight .kn, .highlight .kd, .highlight .kc { color: #7a4a9a; font-weight: 700; }
@@ -1141,6 +1160,17 @@ body:has(#toc) > main {
 
     pre, table, .mermaid-diagram, .admonition {
         box-shadow: none;
+    }
+
+    /* The band's emphasis rides an inset box-shadow and a background tint, both
+       of which browsers drop when "print background graphics" is off (the
+       default). Swap in a real left border -- borders always print -- so a
+       flagged line stays distinguishable on paper; the reduced left padding
+       keeps its text aligned with the unbanded lines. */
+    .highlight .hll {
+        box-shadow: none;
+        border-left: 3px solid #b26a00;
+        padding-left: 10px;
     }
 
     a {

@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when the reader's `prefers-color-scheme` is dark.
 - The SIL Open Font License 1.1 covering the bundled KaTeX fonts now ships in
   the bundle (`mdtohtml/katex/OFL.txt`) alongside KaTeX's MIT `LICENSE`.
+- Code fences accept a `hl_lines` attribute (e.g. ```` ```python hl_lines="2" ````)
+  to emphasise specific lines; under the `report` theme a flagged line is banded
+  with an accent tint and an inset accent rule down its left edge, so the line
+  under discussion stands out from the rest of the listing.
 
 ### Changed
 

@@ -973,3 +973,48 @@ class TestReportTheme:
         assert 'class="mermaid-diagram mermaid-structural"' in out
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Code line emphasis (hl_lines -> .hll)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestCodeLineHighlight:
+    """``hl_lines`` marks one line of a code block; the report theme bands it."""
+
+    def test_hl_lines_emits_hll_class(self) -> None:
+        # The parser already wraps the flagged line in ``.hll``; nh3 keeps the
+        # class (``*: {class}``). This is the hook the report theme styles.
+        html = md_to_html('```python hl_lines="2"\nx = 1\ny = 2\nz = 3\n```')
+        assert 'class="hll"' in html
+        # Syntax highlighting is preserved alongside the banded line.
+        assert 'class="highlight"' in html
+
+    def test_plain_fence_has_no_hll(self) -> None:
+        html = md_to_html("```python\nx = 1\n```")
+        assert "hll" not in html
+
+    def test_report_css_bands_the_highlighted_line(self) -> None:
+        css = load_theme_css("report")
+        assert ".highlight .hll" in css
+        # The band is an accent tint with an inset accent rule. inline-block +
+        # min-width:100% keeps it covering the whole line even once ``pre`` is
+        # scrolled horizontally (a plain block box stops at the static width).
+        marker = css[css.index(".highlight .hll"):]
+        marker = marker[: marker.index("}")]
+        assert "display: inline-block" in marker
+        assert "min-width: 100%" in marker
+        assert "var(--accent-soft)" in marker
+        assert "inset 3px 0 var(--accent)" in marker
+
+    def test_report_css_hll_prints_with_a_border_cue(self) -> None:
+        # Browsers drop background + box-shadow when "print background graphics"
+        # is off (the default), so the band falls back to a real left border in
+        # the print block -- borders always print, keeping the line marked.
+        css = load_theme_css("report")
+        print_block = css[css.index("@media print"):]
+        assert ".highlight .hll" in print_block
+        hll_print = print_block[print_block.index(".highlight .hll"):]
+        hll_print = hll_print[: hll_print.index("}")]
+        assert "border-left: 3px solid" in hll_print
+
+
