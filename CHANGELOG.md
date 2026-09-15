@@ -38,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `report` theme's table-of-contents sidebar header sits with balanced
   spacing: the gap above the "Table of Contents" label now matches the gap below
   it, so the header no longer reads as top-heavy.
+- Under the `report` theme's dark mode, `==highlighted==` text (`<mark>`) uses the
+  accent gold as a solid highlighter with dark ink, so highlights stand out
+  instead of fading into a dim tint.
 
 ### Removed
 

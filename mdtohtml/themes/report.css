@@ -233,6 +233,17 @@ mark {
     border-radius: 3px;
 }
 
+/* In dark mode the pale-gold highlight ground (--accent-soft) is too dim to read
+   as a highlight, so mark takes the solid accent gold -- the same gold the active
+   TOC nav item uses -- with dark ink, a bright highlighter that pops on the dark
+   page. */
+@media (prefers-color-scheme: dark) {
+    mark {
+        background: var(--accent);
+        color: #1b1e24;
+    }
+}
+
 /* @section: inline-code */
 code {
     font-family: var(--mono);
