@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `mermaid` fenced code blocks are pre-rendered to inline SVG at convert time,
   so diagrams need no runtime JavaScript and no network call. A diagram that
   fails to parse degrades to its source shown as a code block with a note.
+- The `report` theme's table-of-contents sidebar has a collapse/expand toggle:
+  the button in the sidebar header collapses it to a slim rail (the content
+  column reclaims the width) and expands it again. The state is not persisted, so
+  a shared HTML file always opens with its contents showing.
 - A `title:` in a mermaid diagram's front matter is lifted out of the diagram
   canvas into a styled header bar on the `report` theme's diagram card, and a
   `left | right` title splits into a left-aligned label and a right-aligned meta

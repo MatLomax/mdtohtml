@@ -748,7 +748,12 @@ def _build_toc_nav(html_body: str, max_depth: int = 3) -> str:
 
     parts: list[str] = [
         '<nav id="toc" aria-label="Table of Contents">',
-        '<div class="toc-title">Table of Contents</div>',
+        '<div class="toc-head">'
+        '<div class="toc-title">Table of Contents</div>'
+        '<button type="button" class="toc-toggle" aria-expanded="true"'
+        ' aria-controls="toc-list"'
+        ' aria-label="Collapse table of contents"></button>'
+        "</div>",
     ]
     # ``open_levels`` is a stack holding the heading level of each currently
     # open ``<ul>``. Nesting advances at most one step per heading regardless
@@ -759,7 +764,10 @@ def _build_toc_nav(html_body: str, max_depth: int = 3) -> str:
 
     for level, hid, text in headings:
         if not open_levels:
-            parts.append("<ul>")
+            # The outermost list is the disclosure region the toggle controls
+            # (referenced by the button's ``aria-controls``); nested lists are
+            # plain ``<ul>``.
+            parts.append('<ul id="toc-list">')
             open_levels.append(level)
         elif level > open_levels[-1]:
             # One step deeper: nest a new list inside the current open item.
@@ -844,6 +852,20 @@ function schedule(){if(!raf)raf=requestAnimationFrame(update);}
 window.addEventListener('scroll',schedule,{passive:true});
 window.addEventListener('resize',schedule,{passive:true});
 update();
+})();
+// Collapse/expand toggle: the button flips the sidebar between the full list and
+// a slim rail. State is not persisted -- each page load starts expanded -- so a
+// shared HTML file always opens showing its contents.
+(function(){
+var toc=document.getElementById('toc');
+if(!toc)return;
+var btn=toc.querySelector('.toc-toggle');
+if(!btn)return;
+btn.addEventListener('click',function(){
+var collapsed=toc.classList.toggle('collapsed');
+btn.setAttribute('aria-expanded',collapsed?'false':'true');
+btn.setAttribute('aria-label',collapsed?'Expand table of contents':'Collapse table of contents');
+});
 })();
 """
 

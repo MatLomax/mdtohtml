@@ -558,7 +558,8 @@ class TestToc:
             '<h1 id="d">D</h1>'
         )
         nav = _build_toc_nav(body)
-        assert nav.count("<ul>") >= 3
+        # Count open-tag prefixes so the outer ``<ul id="toc-list">`` is included.
+        assert nav.count("<ul") >= 3
         assert nav.count("</ul>") >= 3
 
     # ── render_html with toc ──
@@ -607,6 +608,25 @@ class TestToc:
         assert "getBoundingClientRect" in TOC_JS
         assert "offsetTop" not in TOC_JS
 
+    # ── Collapse/expand toggle ──
+
+    def test_build_toc_nav_has_collapse_toggle(self) -> None:
+        nav = _build_toc_nav('<h1 id="a">A</h1><h2 id="b">B</h2>')
+        assert 'class="toc-head"' in nav
+        assert 'class="toc-toggle"' in nav
+        assert 'type="button"' in nav
+        # Default (each load) is expanded.
+        assert 'aria-expanded="true"' in nav
+        # The disclosure button names the region it controls, which carries the id.
+        assert 'aria-controls="toc-list"' in nav
+        assert '<ul id="toc-list">' in nav
+
+    def test_toc_js_wires_the_collapse_toggle(self) -> None:
+        assert "toc-toggle" in TOC_JS
+        assert "classList.toggle('collapsed')" in TOC_JS
+        # The scrollspy IIFE is still present alongside the toggle.
+        assert "getBoundingClientRect" in TOC_JS
+
     def test_toc_scrollspy_pins_last_entry_at_page_bottom(self) -> None:
         """A short final section can't reach the trigger line, so the last
         entry is pinned once the page is fully scrolled."""
@@ -645,7 +665,8 @@ let headTops=[0,0,0],scrollHeight=2000,innerHeight=500,scrollY=0;
 const links=[link(),link(),link()];
 const headings=[0,1,2].map(i=>({getBoundingClientRect(){return {top:headTops[i]};}}));
 const anchors=links.map((l,i)=>({getAttribute(){return '#h'+i;},classList:l.classList,setAttribute:l.setAttribute,removeAttribute:l.removeAttribute,getBoundingClientRect(){return {top:0,bottom:10};}}));
-const toc={scrollHeight:10,clientHeight:100,scrollTop:0,querySelectorAll:()=>anchors,getBoundingClientRect(){return {top:0,bottom:100};}};
+const toggleBtn={addEventListener(){},setAttribute(){}};
+const toc={scrollHeight:10,clientHeight:100,scrollTop:0,querySelectorAll:()=>anchors,querySelector:()=>toggleBtn,classList:{toggle(){return true;}},getBoundingClientRect(){return {top:0,bottom:100};}};
 let sh=null;
 global.requestAnimationFrame=fn=>fn();
 global.document={getElementById(id){if(id==='toc')return toc;const m=/^h(\d)$/.exec(id);return m?headings[+m[1]]:null;},documentElement:{get scrollHeight(){return scrollHeight;}}};
@@ -670,6 +691,52 @@ process.stdout.write(JSON.stringify(out));
         assert result["mid"] == 1         # advances as headings pass the line
         assert result["bottom"] == 2      # last entry pinned at page bottom
         assert result["shortFits"] == 0   # short page: first, not last
+
+    def test_toc_js_toggle_collapses_and_expands(self, tmp_path: Path) -> None:
+        """Run the real toggle IIFE (via node): clicking flips the 'collapsed'
+        class and the button's aria-expanded/aria-label, and clicking again
+        restores it -- with no persistence call."""
+        import json
+        import shutil
+        import subprocess
+
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip("node not available")
+
+        assert "localStorage" not in TOC_JS  # state is intentionally not persisted
+
+        (tmp_path / "toc.js").write_text(TOC_JS, encoding="utf-8")
+        harness = r"""
+const fs=require('fs');
+const js=fs.readFileSync(process.argv[2],'utf8');
+let clickHandler=null;
+const cls=new Set();
+const btn={attrs:{},addEventListener(ev,fn){if(ev==='click')clickHandler=fn;},setAttribute(k,v){btn.attrs[k]=v;}};
+const toc={classList:{toggle(c){if(cls.has(c)){cls.delete(c);return false;}cls.add(c);return true;}},querySelector:()=>btn,querySelectorAll:()=>[],getBoundingClientRect(){return{top:0,bottom:0};},scrollHeight:0,clientHeight:0};
+global.requestAnimationFrame=fn=>fn();
+global.document={getElementById(id){return id==='toc'?toc:null;},documentElement:{scrollHeight:0}};
+global.window={innerHeight:0,scrollY:0,addEventListener(){},requestAnimationFrame:global.requestAnimationFrame};
+eval(js);
+const out={hasHandler:!!clickHandler};
+clickHandler();out.first={collapsed:cls.has('collapsed'),aria:btn.attrs['aria-expanded'],label:btn.attrs['aria-label']};
+clickHandler();out.second={collapsed:cls.has('collapsed'),aria:btn.attrs['aria-expanded'],label:btn.attrs['aria-label']};
+process.stdout.write(JSON.stringify(out));
+"""
+        (tmp_path / "harness.js").write_text(harness, encoding="utf-8")
+        proc = subprocess.run(
+            [node, str(tmp_path / "harness.js"), str(tmp_path / "toc.js")],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, proc.stderr
+        r = json.loads(proc.stdout)
+        assert r["hasHandler"] is True
+        assert r["first"] == {
+            "collapsed": True, "aria": "false", "label": "Expand table of contents",
+        }
+        assert r["second"] == {
+            "collapsed": False, "aria": "true", "label": "Collapse table of contents",
+        }
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -730,8 +797,10 @@ class TestSecurityFixes:
 class TestTocNestingBalance:
     @staticmethod
     def _balanced(nav: str) -> bool:
+        # Count open-tag prefixes so the outer ``<ul id="toc-list">`` is balanced
+        # against its ``</ul>`` alongside the plain nested ``<ul>``s.
         return (
-            nav.count("<ul>") == nav.count("</ul>")
+            nav.count("<ul") == nav.count("</ul>")
             and nav.count("<li>") == nav.count("</li>")
         )
 

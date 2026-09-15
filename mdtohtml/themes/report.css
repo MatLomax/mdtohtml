@@ -946,6 +946,19 @@ hr {
     scrollbar-width: thin;
 }
 
+/* The header band carries the title and the collapse toggle, plus the divider
+   rule (the ``#toc`` top padding is matched to this padding-bottom so the band
+   reads balanced). */
+.toc-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 0 1.25rem 0.9rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--line);
+}
+
 .toc-title {
     font-family: var(--mono);
     font-size: 0.6875rem;
@@ -953,9 +966,40 @@ hr {
     text-transform: uppercase;
     letter-spacing: 0.14em;
     color: var(--ink-faint);
-    margin: 0 1.25rem 0.9rem;
-    padding-bottom: 0.85rem;
-    border-bottom: 1px solid var(--line);
+    margin: 0;
+}
+
+/* Collapse/expand button. Its glyph is a CSS chevron (a bordered box corner
+   rotated) -- pointing left to collapse when open, flipped to point right when
+   the sidebar is a rail. */
+.toc-toggle {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    color: var(--ink-faint);
+    cursor: pointer;
+}
+
+.toc-toggle:hover {
+    color: var(--ink);
+    border-color: var(--ink-faint);
+    background: var(--line-soft);
+}
+
+.toc-toggle::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-left: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateX(1px) rotate(45deg);
 }
 
 #toc ul {
@@ -1031,6 +1075,34 @@ body:has(#toc) > main {
         margin: 0;
         padding: 0 0 0 17rem;
     }
+
+    /* Collapsed: the sidebar shrinks to a slim rail holding only the toggle,
+       which flips to point right (expand); the title and list hide and the
+       content column reclaims the freed width. Screen-only, so a collapsed
+       sidebar still prints its full list. */
+    #toc.collapsed {
+        width: 3rem;
+    }
+
+    #toc.collapsed .toc-head {
+        margin: 0;
+        padding: 0.85rem 0;
+        border-bottom: none;
+        justify-content: center;
+    }
+
+    #toc.collapsed .toc-title,
+    #toc.collapsed > ul {
+        display: none;
+    }
+
+    #toc.collapsed .toc-toggle::before {
+        transform: translateX(-1px) rotate(-135deg);
+    }
+
+    body:has(#toc.collapsed) {
+        padding-left: 3rem;
+    }
 }
 
 /* @section: print-media */
@@ -1054,6 +1126,11 @@ body:has(#toc) > main {
         padding: 0;
         break-after: page;
         page-break-after: always;
+    }
+
+    /* No interactive control on paper; the full list always prints. */
+    .toc-toggle {
+        display: none;
     }
 
     body:has(#toc) > main {
