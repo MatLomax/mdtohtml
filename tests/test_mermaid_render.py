@@ -9,6 +9,8 @@ import nh3
 import pytest
 
 from mdtohtml.mermaid_render import (
+    _extract_mermaid_title,
+    _header_html,
     begin_conversion,
     end_conversion,
     format_mermaid_fence,
@@ -310,3 +312,129 @@ class TestFenceIntegration:
         assert "<svg" not in html
         assert "mermaid-error" in html
         assert "could not be rendered" in html.lower()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Frontmatter title → card header
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestFrontmatterTitle:
+    def test_extract_title_only_strips_frontmatter(self) -> None:
+        title, src = _extract_mermaid_title(
+            "---\ntitle: My Flow\n---\nflowchart TD\n A-->B\n"
+        )
+        assert title == "My Flow"
+        assert src == "flowchart TD\n A-->B\n"
+
+    def test_extract_preserves_other_frontmatter_keys(self) -> None:
+        title, src = _extract_mermaid_title(
+            "---\nconfig:\n  theme: base\ntitle: Kept\n---\nflowchart TD\n A-->B\n"
+        )
+        assert title == "Kept"
+        assert src.startswith("---\n")
+        assert "config:" in src and "theme: base" in src
+        assert "title:" not in src
+        assert src.rstrip().endswith("A-->B")
+
+    def test_extract_dequotes_title(self) -> None:
+        for raw in ('"Hello: World"', "'Hello: World'"):
+            title, _ = _extract_mermaid_title(
+                f'---\ntitle: {raw}\n---\nflowchart TD\n A-->B\n'
+            )
+            assert title == "Hello: World"
+
+    def test_no_frontmatter_is_unchanged(self) -> None:
+        src_in = "flowchart TD\n A-->B\n"
+        title, src = _extract_mermaid_title(src_in)
+        assert title is None
+        assert src == src_in
+
+    def test_frontmatter_without_title_is_unchanged(self) -> None:
+        src_in = "---\nconfig:\n  theme: base\n---\nflowchart TD\n A-->B\n"
+        title, src = _extract_mermaid_title(src_in)
+        assert title is None
+        assert src == src_in
+
+    def test_header_single_title(self) -> None:
+        html = _header_html("Just A Title")
+        assert '<div class="mermaid-header">' in html
+        assert '<span class="mh-left">Just A Title</span>' in html
+        assert "mh-right" not in html
+
+    def test_header_split_title_left_right(self) -> None:
+        html = _header_html("Overview | v2.1")
+        assert '<span class="mh-left">Overview</span>' in html
+        assert '<span class="mh-right">v2.1</span>' in html
+
+    def test_header_escapes_html(self) -> None:
+        html = _header_html("<script> | <b>x</b>")
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+        assert "&lt;b&gt;x&lt;/b&gt;" in html
+
+    def test_render_lifts_title_into_header_not_canvas(self) -> None:
+        out = render_mermaid("---\ntitle: My Flow Title\n---\nflowchart TD\n A-->B\n")
+        assert '<div class="mermaid-header">' in out
+        assert out.index("mermaid-header") < out.index("<svg")
+        # The title appears once (in the header), never as an in-canvas <text>
+        # caption (mermaid's ``.flowchartTitleText`` CSS rule may still be present
+        # in the style blob, but no <text> element carries the title).
+        assert out.count("My Flow Title") == 1
+        assert not re.search(r"<text[^>]*>[^<]*My Flow Title", out)
+
+    def test_render_without_title_has_no_header(self) -> None:
+        out = render_mermaid("flowchart TD\n A-->B\n")
+        assert "mermaid-header" not in out
+        assert "<svg" in out
+
+    def test_degrade_shows_original_source_with_frontmatter(self) -> None:
+        out = render_mermaid("---\ntitle: Broken\n---\n" + MALFORMED)
+        assert "mermaid-error" in out
+        # The degrade shows the ORIGINAL source, title line intact for the author.
+        assert "title: Broken" in out
+
+    def test_nested_title_is_not_lifted(self) -> None:
+        # A ``title:`` indented under another key is not mermaid's caption title,
+        # so it is left in place (matched only at column 0).
+        src_in = "---\nconfig:\n  title: Nested\n---\nflowchart TD\n A-->B\n"
+        title, src = _extract_mermaid_title(src_in)
+        assert title is None
+        assert src == src_in
+
+    def test_similar_top_level_keys_do_not_match(self) -> None:
+        for key in ("subtitle", "x-title"):
+            src_in = f"---\n{key}: v\n---\nflowchart TD\n A-->B\n"
+            title, src = _extract_mermaid_title(src_in)
+            assert title is None
+            assert src == src_in
+
+    def test_crlf_frontmatter(self) -> None:
+        title, src = _extract_mermaid_title(
+            "---\r\ntitle: CRLF\r\n---\r\nflowchart TD\r\n A-->B\r\n"
+        )
+        assert title == "CRLF"
+        assert "title:" not in src
+
+    def test_header_leading_pipe_collapses_to_single(self) -> None:
+        assert _header_html("| Right") == (
+            '<div class="mermaid-header"><span class="mh-left">Right</span></div>'
+        )
+
+    def test_header_trailing_pipe_collapses_to_single(self) -> None:
+        assert _header_html("Left |") == (
+            '<div class="mermaid-header"><span class="mh-left">Left</span></div>'
+        )
+
+    def test_header_splits_on_first_pipe_only(self) -> None:
+        html = _header_html("a | b | c")
+        assert '<span class="mh-left">a</span>' in html
+        assert '<span class="mh-right">b | c</span>' in html
+
+    def test_titled_diagram_header_survives_full_pipeline(self) -> None:
+        doc = "```mermaid\n---\ntitle: Pipe Test | v9\n---\nflowchart TD\n A-->B\n```\n"
+        html = _convert_with_mermaid(doc, dark=False)
+        assert '<div class="mermaid-header">' in html
+        assert '<span class="mh-left">Pipe Test</span>' in html
+        assert '<span class="mh-right">v9</span>' in html
+        assert "<svg" in html

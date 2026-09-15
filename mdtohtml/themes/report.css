@@ -619,6 +619,50 @@ pre code {
     margin: 0 auto;
 }
 
+/* Optional card header lifted from a diagram's ``title:`` frontmatter. The base
+   rules suit the pinned LIGHT card (un-adapted families keep fixed light-card
+   colours); the structural/categorical overrides below switch it to the theme
+   tokens, mirroring how the card itself adapts. A ``left | right`` title fills
+   both spans (label left, meta right); a plain title fills only ``.mh-left``. */
+.mermaid-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin: 0 0 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e3ddcf;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.mermaid-header .mh-left {
+    color: #4a515c;
+    font-weight: 700;
+}
+
+.mermaid-header .mh-right {
+    color: #767e8b;
+    font-weight: 400;
+}
+
+.mermaid-structural .mermaid-header,
+.mermaid-categorical .mermaid-header {
+    border-bottom-color: var(--line);
+}
+
+.mermaid-structural .mermaid-header .mh-left,
+.mermaid-categorical .mermaid-header .mh-left {
+    color: var(--ink-soft);
+}
+
+.mermaid-structural .mermaid-header .mh-right,
+.mermaid-categorical .mermaid-header .mh-right {
+    color: var(--ink-faint);
+}
+
 /* Structural recolour (flowchart/sequence/state/class/ER). The wrapper carries
    ``mermaid-structural`` (set by mermaid_render from the diagram's role), so the
    rules never touch pie/gantt or an untested type. ``!important`` here is required

@@ -184,6 +184,21 @@ default palette otherwise. A diagram that fails to parse degrades to its
 original source shown as a code block with a visible note, so one bad diagram
 never breaks the document.
 
+A `title:` in a diagram's mermaid front matter is lifted out of the canvas into
+a styled header bar on the `report` theme's diagram card (other themes leave it
+unstyled). A `left | right` title splits into a left-aligned label and a
+right-aligned meta note:
+
+````markdown
+```mermaid
+---
+title: System Overview | v2.1
+---
+flowchart LR
+    A[Client] --> B[API] --> C[(Database)]
+```
+````
+
 ## Third-party licenses
 
 mdtohtml is MIT-licensed and relies on several third-party components. The

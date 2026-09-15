@@ -64,6 +64,89 @@ _STRUCTURAL_ROLES = frozenset({
 _CATEGORICAL_ROLES = frozenset({"pie", "gantt"})
 
 
+# ── Frontmatter Title → Card Header ──
+
+# A leading mermaid YAML frontmatter block: ``---`` on its own line, YAML body,
+# then a closing ``---`` line, then the diagram. Mermaid draws a ``title:`` field
+# as a small caption inside the SVG; this theme instead lifts the title out into
+# a styled ``.mermaid-header`` bar on the card, so the title line is extracted and
+# removed before the source reaches mermaid.
+_FRONTMATTER_RE = re.compile(r"\A\s*---[ \t]*\r?\n(.*?)\r?\n---[ \t]*\r?\n(.*)\Z", re.S)
+
+# A top-level ``title:`` line within the frontmatter body. Anchored at column 0
+# so a ``title:`` nested under another key (e.g. inside a ``config:`` mapping) is
+# left alone -- mermaid's caption title is always a top-level key. Value is
+# everything after the colon; quotes are stripped separately.
+_TITLE_LINE_RE = re.compile(r"\Atitle[ \t]*:[ \t]*(.*?)[ \t]*\Z")
+
+
+def _extract_mermaid_title(source: str) -> tuple[str | None, str]:
+    """Split a mermaid ``title:`` frontmatter field off the diagram *source*.
+
+    Returns ``(title, source_without_title)``. When the source carries a leading
+    YAML frontmatter block with a ``title:`` line, the title (dequoted) is
+    returned and that line is removed from the source so mermaid does not also
+    draw its own in-canvas caption; any other frontmatter keys are preserved, and
+    the frontmatter block is dropped entirely when title was its only key. When
+    there is no frontmatter or no title, ``(None, source)`` is returned unchanged.
+    """
+    m = _FRONTMATTER_RE.match(source)
+    if not m:
+        return None, source
+
+    yaml_body, diagram = m.group(1), m.group(2)
+    title: str | None = None
+    kept: list[str] = []
+    for line in yaml_body.split("\n"):
+        tm = _TITLE_LINE_RE.match(line)
+        if tm is not None and title is None:
+            raw = tm.group(1).strip()
+            if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ("\"", "'"):
+                raw = raw[1:-1]
+            raw = raw.strip()
+            if raw:
+                title = raw
+                continue  # drop the title line from the frontmatter
+        kept.append(line)
+
+    if title is None:
+        return None, source
+
+    remaining = "\n".join(kept).strip()
+    if remaining:
+        new_source = f"---\n{remaining}\n---\n{diagram}"
+    else:
+        new_source = diagram
+    return title, new_source
+
+
+def _header_html(title: str) -> str:
+    """Build the ``.mermaid-header`` bar for a diagram *title*.
+
+    A ``left | right`` title splits on the first ``|`` into a left-aligned label
+    and a right-aligned meta note; a plain title renders as a single left label.
+    The title is author-controlled diagram source injected as trusted output
+    (post-``nh3.clean``), so each part is HTML-escaped here.
+    """
+    left, sep, right = title.partition("|")
+    left, right = left.strip(), right.strip()
+    if sep and left and right:
+        return (
+            '<div class="mermaid-header">'
+            f'<span class="mh-left">{_html.escape(left, quote=False)}</span>'
+            f'<span class="mh-right">{_html.escape(right, quote=False)}</span>'
+            "</div>"
+        )
+    # A missing side (a leading or trailing ``|``) collapses to a single label,
+    # so a stray pipe never renders an empty span.
+    single = left or right
+    return (
+        '<div class="mermaid-header">'
+        f'<span class="mh-left">{_html.escape(single, quote=False)}</span>'
+        "</div>"
+    )
+
+
 # ── SVG Rendering ──
 
 
@@ -139,8 +222,13 @@ def render_mermaid(source: str, *, dark: bool = False) -> str:
         A trusted HTML fragment ready to embed in the document body.
     """
     theme = _THEME_DARK if dark else _THEME_LIGHT
+    # Lift a ``title:`` frontmatter field into a card header, rendering the source
+    # without it so mermaid does not also draw its own in-canvas caption. On a
+    # render failure the ORIGINAL source (frontmatter intact) is shown so the
+    # author sees exactly what they wrote.
+    title, render_source = _extract_mermaid_title(source)
     try:
-        diagram = mermaidx.render(source, theme=theme, config=_MERMAID_CONFIG)
+        diagram = mermaidx.render(render_source, theme=theme, config=_MERMAID_CONFIG)
         svg = diagram.svg()
     except Exception as exc:  # noqa: BLE001 - any renderer failure degrades
         return _degrade_fragment(source, exc)
@@ -156,7 +244,8 @@ def render_mermaid(source: str, *, dark: bool = False) -> str:
     if cls == " mermaid-structural":
         # Let the theme's recolour reach mermaid's id-scoped ``!important`` markers.
         svg = _soften_structural_colours(svg)
-    return f'<div class="mermaid-diagram{cls}">{svg}</div>'
+    header = _header_html(title) if title else ""
+    return f'<div class="mermaid-diagram{cls}">{header}{svg}</div>'
 
 
 def _degrade_fragment(source: str, error: BaseException) -> str:

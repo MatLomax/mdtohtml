@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `mermaid` fenced code blocks are pre-rendered to inline SVG at convert time,
   so diagrams need no runtime JavaScript and no network call. A diagram that
   fails to parse degrades to its source shown as a code block with a note.
+- A `title:` in a mermaid diagram's front matter is lifted out of the diagram
+  canvas into a styled header bar on the `report` theme's diagram card, and a
+  `left | right` title splits into a left-aligned label and a right-aligned meta
+  note. Mermaid no longer draws its own in-canvas caption for the title.
 - The `report` theme recolours pre-rendered mermaid diagrams to its own palette
   and adapts them to dark mode: structural diagrams (flowchart, sequence, state,
   class, ER) follow the theme, while categorical diagrams (pie, gantt) keep their
