@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,7 @@ from mdtohtml.converter import (
     md_to_html,
     preprocess_chips,
     preprocess_obsidian_callouts,
+    preprocess_section_kickers,
     preprocess_wikilinks,
     render_html,
 )
@@ -925,6 +927,66 @@ class TestMdToHtmlChips:
         assert "alert(1)" not in html
         # The chip wrapper itself is intact; only the payload is neutralised.
         assert 'class="pchip blue"' in html
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Section kickers (^ Label above a heading -> .sec-label)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestPreprocessSectionKickers:
+    def test_kicker_above_heading_becomes_sec_label(self) -> None:
+        result = preprocess_section_kickers("^ The symptom\n## What it reports")
+        assert '<p class="sec-label">The symptom</p>' in result
+        # The heading survives right after the emitted label.
+        assert "## What it reports" in result
+
+    def test_caret_not_above_heading_stays_literal(self) -> None:
+        md = "^ just a caret line\n\nnot a heading"
+        assert preprocess_section_kickers(md) == md
+
+    def test_caret_inside_code_fence_untouched(self) -> None:
+        md = "```\n^ inside code\n## also code\n```"
+        assert preprocess_section_kickers(md) == md
+
+    def test_whitespace_only_label_stays_literal(self) -> None:
+        # An empty label after trimming would emit a blank ``.sec-label``; the
+        # guard leaves the caret line literal instead.
+        md = "^   \n## Heading"
+        assert preprocess_section_kickers(md) == md
+        assert "sec-label" not in md_to_html(md)
+
+    def test_label_is_html_escaped(self) -> None:
+        result = preprocess_section_kickers("^ a <b> & c\n## H")
+        assert "a &lt;b&gt; &amp; c" in result
+        assert "<b>" not in result
+
+
+class TestMdToHtmlSectionKickers:
+    def test_kicker_renders_adjacent_to_heading(self) -> None:
+        out = md_to_html("^ The symptom\n## What it reports")
+        # Adjacent DOM siblings (only whitespace between) so ``.sec-label + h2``
+        # applies. Levels h1-h6 are all supported.
+        assert re.search(
+            r'<p class="sec-label">The symptom</p>\s*<h2', out
+        )
+
+    def test_hostile_kicker_label_is_escaped(self) -> None:
+        # The label is HTML-escaped at emit time (the hero eyebrow/slot model),
+        # so a hostile payload becomes inert text: no live element forms, and
+        # the escaped source is what renders.
+        out = md_to_html("^ <img src=x onerror=alert(1)>\n## Heading")
+        assert "<img" not in out
+        assert "&lt;img src=x onerror=alert(1)&gt;" in out
+        assert 'class="sec-label"' in out
+
+
+class TestReportThemeSectionKicker:
+    def test_report_css_styles_sec_label(self) -> None:
+        css = load_theme_css("report")
+        assert ".sec-label" in css
+        # The following heading is tucked against the kicker.
+        assert ".sec-label + h2" in css
 
 
 # ═══════════════════════════════════════════════════════════════════════

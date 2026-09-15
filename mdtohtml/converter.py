@@ -347,6 +347,61 @@ def preprocess_chips(md_text: str) -> str:
     return _restore_code(rewritten, placeholders)
 
 
+# ── Section Kicker Preprocessing ──
+
+
+# A section kicker: a line ``^ Label`` sitting immediately above a heading. It
+# renders as a small mono-uppercase label over the heading (``.sec-label``). The
+# leading ``^`` at column 0 is never Markdown, so it needs no escaping to claim.
+_SEC_KICKER_RE = re.compile(r"^\^ (.+)$")
+
+# An ATX heading line (``#`` to ``######`` then a space). Setext headings
+# (text underlined by ``===``/``---``) are deliberately not matched: a ``---``
+# underline is ambiguous with a thematic break and a ``-`` list, so the kicker
+# attaches only to the unambiguous ATX form.
+_HEADING_RE = re.compile(r"^#{1,6} ")
+
+
+def preprocess_section_kickers(md_text: str) -> str:
+    """Convert ``^ Label`` kicker lines above a heading to a ``.sec-label``.
+
+    Converts, only when the very next line is an ATX heading::
+
+        ^ The symptom
+        ## What it reports
+
+    to a ``<p class="sec-label">The symptom</p>`` block emitted just above the
+    heading (an adjacent-sibling CSS rule tucks the heading against it). A ``^``
+    line that is not immediately above a heading -- or whose label is empty once
+    trimmed -- is left untouched, so ordinary prose that happens to start with a
+    caret is never rewritten.
+
+    Keep a kicker to a short plain label: it is emitted as HTML-escaped text, so
+    it can never inject markup, but this pass runs after the chip and wikilink
+    passes, so any ``:key[..]`` / ``[[..]]`` / Markdown syntax placed inside a
+    kicker is not meaningfully rendered (it is escaped as literal text). Fenced
+    and inline code are protected so a ``^ ...`` example inside code is never
+    rewritten.
+    """
+    protected, placeholders = _protect_code(md_text)
+    lines = protected.split("\n")
+    out: list[str] = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        m = _SEC_KICKER_RE.match(lines[i])
+        label = _html.escape(m.group(1).strip(), quote=False) if m else ""
+        if label and i + 1 < n and _HEADING_RE.match(lines[i + 1]):
+            out.append(f'<p class="sec-label">{label}</p>')
+            # A blank line so Python-Markdown treats the ``<p>`` as its own raw
+            # HTML block rather than folding it into an adjacent paragraph.
+            out.append("")
+        else:
+            out.append(lines[i])
+        i += 1
+    return _restore_code("\n".join(out), placeholders)
+
+
 # ── Math Delimiter Rewriting ──
 
 # pymdownx.arithmatex generic mode wraps each expression in an
@@ -629,6 +684,10 @@ def md_to_html(
 
         # Step 1b: Convert inline ``:key[label]`` chips to coloured spans
         md_text = preprocess_chips(md_text)
+
+        # Step 1c: Convert ``^ Label`` kicker lines above a heading to section
+        # labels (``.sec-label``).
+        md_text = preprocess_section_kickers(md_text)
 
         # Step 2: Convert markdown to HTML
         md_converter = markdown.Markdown(

@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to emphasise specific lines; under the `report` theme a flagged line is banded
   with an accent tint and an inset accent rule down its left edge, so the line
   under discussion stands out from the rest of the listing.
+- A section kicker: a `^ Label` line immediately above a heading renders as a
+  small mono-uppercase accent label leading the section (`.sec-label` under the
+  `report` theme), with the heading tucked against it. A caret line that is not
+  directly above a heading, or one inside a code block, is left as literal text.
 
 ### Changed
 

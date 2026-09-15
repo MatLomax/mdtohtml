@@ -201,6 +201,30 @@ h1 + p {
     margin: 0 0 8px;
 }
 
+/* @section: section-kicker
+   A ``^ Label`` line above a heading renders as ``<p class="sec-label">`` -- a
+   small mono-uppercase accent kicker (matching the hero eyebrow) that leads a
+   section. The kicker carries the section's top gap and the following heading is
+   tucked against it, so the pair reads as one unit. */
+.sec-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 48px 0 0;
+}
+
+.sec-label + h1,
+.sec-label + h2,
+.sec-label + h3,
+.sec-label + h4,
+.sec-label + h5,
+.sec-label + h6 {
+    margin-top: 4px;
+}
+
 /* @section: paragraph */
 p {
     margin: 0.7em 0;
