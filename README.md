@@ -97,7 +97,7 @@ elsewhere.
 The built-in `report` theme (`--theme report`) is a warm, AA-accessible
 visual system that auto-switches light/dark with the reader's
 `prefers-color-scheme`, styling headings, tables, callout cards, coloured
-chips, and framed diagrams as a cohesive report.
+chips, framed diagrams, and a front-matter-driven hero as a cohesive report.
 
 ### Chips
 
@@ -112,6 +112,40 @@ Status :green[passing] · :red[blocked] · :slate[deferred]
 A colon that is not one of these keys, or one glued to a preceding word
 (`code:red[1]`), is left as ordinary text. Chips carry a `pchip` class and are
 styled by the `report` theme; under other themes the label shows as plain text.
+
+### Front matter and the report hero
+
+A document may open with a `---` fenced front-matter block that supplies the
+report hero — the header band the `report` theme renders above the content:
+
+```markdown
+---
+eyebrow: mdtohtml · component reference
+title: Release Readiness Report
+lede: A one-paragraph intro that may contain **inline markdown**.
+slot: Shipped | Server-side rendering | Zero runtime JavaScript.
+slot: Themed | Report theme | Auto light/dark, AA-safe.
+slot: Portable | Single file | Everything inlines into one HTML file.
+---
+
+## First section
+```
+
+- `title` sets both the hero `<h1>` and the document `<title>`; when a document
+  uses front matter its body should start at `##`, since the hero supplies the
+  heading.
+- `eyebrow` is a small mono kicker above the title; `lede` is the oversized
+  intro line.
+- Each `slot:` line is one card in the hero's slot rail, split on `|` into
+  `label | heading | body` (three cards read best; they stack on narrow
+  screens). `label` is a plain mono kicker; `lede`, slot `heading`, and slot
+  `body` accept inline markdown.
+
+The block is a tiny flat format with no bundled YAML dependency; unrecognised
+keys are ignored. Author text is escaped or sanitized, so nothing in the hero
+can inject markup. A document without a leading `---` block is unaffected, and
+the hero markup is styled only by the `report` theme (other themes leave it
+unstyled, as with chips).
 
 ## Math
 
@@ -181,6 +215,8 @@ notices. The aggregate covers:
 
 ## How it works
 
+0. A leading `---` front-matter block, if present, is split off to build the
+   report hero and set the document `<title>`; the rest is the markdown body.
 1. Markdown (with Obsidian callouts and wikilinks preprocessed) is converted
    to HTML via `markdown` + `pymdown-extensions`; ` ```mermaid ` fences render
    to inline SVG, held aside behind a placeholder.

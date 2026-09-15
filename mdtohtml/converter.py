@@ -20,7 +20,7 @@ from pathlib import Path
 import markdown
 import nh3
 
-from . import katex_assets, katex_render, mermaid_render
+from . import frontmatter, katex_assets, katex_render, mermaid_render
 
 # ── Path Constants ──
 
@@ -851,6 +851,76 @@ update();
 # ── Rendering ──
 
 
+# Extensions used to render inline markdown inside hero fields (lede, slot
+# heading/body). Kept to the inline-formatting subset -- emphasis, strike,
+# highlight -- so a hero line reads like body prose; block constructs are not
+# expected in a one-line field. Core markdown (links, inline code) is always on.
+_INLINE_MD_EXTENSIONS = ["pymdownx.betterem", "pymdownx.tilde", "pymdownx.mark"]
+
+
+def _render_inline(text: str) -> str:
+    """Render a one-line hero field's inline markdown to sanitised HTML.
+
+    The field is converted with the inline-formatting extensions, unwrapped
+    from the single ``<p>`` markdown adds, and run through the same nh3 pass as
+    the body -- so author markup (a link, ``code``, ``**bold**``) works while
+    any hostile markup is neutralised. It is therefore safe to splice into the
+    trusted hero structure built by :func:`_render_hero`.
+    """
+    md = markdown.Markdown(extensions=_INLINE_MD_EXTENSIONS, output_format="html")
+    rendered = md.convert(text).strip()
+    if (
+        rendered.startswith("<p>")
+        and rendered.endswith("</p>")
+        and rendered.count("<p>") == 1
+    ):
+        rendered = rendered[3:-4]
+    return nh3.clean(
+        rendered,
+        tags=_NH3_ALLOWED_TAGS,
+        attributes=_NH3_ALLOWED_ATTRIBUTES,
+        filter_style_properties=_KATEX_STYLE_PROPS,
+    )
+
+
+def _render_hero(fm: frontmatter.FrontMatter) -> str:
+    """Build the report hero ``<header>`` from parsed front matter.
+
+    Emits the eyebrow kicker, the title ``<h1>``, the lede, and a ``.stages``
+    grid of ``.stage-card`` slot boxes -- each an optional block, so a hero can
+    be just a title or a full three-card rail. Eyebrow and slot labels are plain
+    mono kickers (HTML-escaped); the lede and slot heading/body carry inline
+    markdown via :func:`_render_inline`. Styled by the ``report`` theme; other
+    themes leave the structure unstyled, as with chips.
+    """
+    parts = ['<header class="report-hero">']
+    if fm.eyebrow:
+        parts.append(f'<p class="eyebrow">{_html.escape(fm.eyebrow)}</p>')
+    if fm.title:
+        parts.append(f"<h1>{_html.escape(fm.title)}</h1>")
+    if fm.lede:
+        parts.append(f'<p class="lede">{_render_inline(fm.lede)}</p>')
+    cards: list[str] = []
+    for slot in fm.slots:
+        # An empty slot (no label/heading/body) contributes no card, so a stray
+        # ``slot:`` line never renders an empty box in the rail.
+        if not (slot.label or slot.heading or slot.body):
+            continue
+        card = ['<div class="stage-card">']
+        if slot.label:
+            card.append(f'<span class="n">{_html.escape(slot.label)}</span>')
+        if slot.heading:
+            card.append(f"<h3>{_render_inline(slot.heading)}</h3>")
+        if slot.body:
+            card.append(f"<p>{_render_inline(slot.body)}</p>")
+        card.append("</div>")
+        cards.append("".join(card))
+    if cards:
+        parts.append(f'<div class="stages">{"".join(cards)}</div>')
+    parts.append("</header>")
+    return "\n".join(parts)
+
+
 def _head_extra_for(body: str) -> str:
     """Return the ``<head>`` snippet needed by *body*.
 
@@ -878,25 +948,38 @@ def render_html(
 ) -> str:
     """Convert markdown to a full HTML document string.
 
+    A leading ``---`` front-matter block is split off first: it supplies the
+    report hero (eyebrow / title / lede / slot cards) and the document
+    ``<title>``, and is removed from the markdown before conversion. A document
+    without such a block is unaffected.
+
     When *toc* is True, a fixed table-of-contents sidebar is prepended to
     the body and scroll-tracking JavaScript is appended. When *dark* is true,
     mermaid diagrams render with the dark theme.
     """
+    fm, body_md = frontmatter.parse_frontmatter(md_text)
+
     if title is None:
-        title = extract_title(md_text)
+        title = (fm.title if fm and fm.title else "") or extract_title(body_md)
 
     body = md_to_html(
-        md_text,
+        body_md,
         ignore_callouts=ignore_callouts,
         dark=dark,
     )
 
     head_extra = _head_extra_for(body)
 
-    if toc:
-        toc_nav = _build_toc_nav(body)
-        if toc_nav:
-            body = f"{toc_nav}\n<main>\n{body}\n</main>\n<script>\n{TOC_JS}</script>"
+    hero = _render_hero(fm) if fm and fm.has_hero else ""
+
+    # The hero lives inside <main> (the content column beside the sidebar) when
+    # a TOC is present, and at the top of the body otherwise. Its <h1> carries
+    # no id, so it never enters the TOC built from the body headings.
+    toc_nav = _build_toc_nav(body) if toc else ""
+    if toc_nav:
+        body = f"{toc_nav}\n<main>\n{hero}{body}\n</main>\n<script>\n{TOC_JS}</script>"
+    elif hero:
+        body = f"{hero}\n{body}"
 
     # Escape the title: it is interpolated raw into <title>, bypassing nh3.
     safe_title = _html.escape(title, quote=True)

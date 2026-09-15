@@ -109,9 +109,90 @@ h6 {
 }
 
 /* @section: hero
-   The document has no eyebrow/lede markup, so the opening H1 and the paragraph
-   immediately after it are styled as the hero: a large title over an oversized
-   intro line. Only the FIRST paragraph after the H1 is treated as the lede. */
+   A leading ``---`` front-matter block renders a ``<header class="report-hero">``
+   with an eyebrow kicker, the title, a lede, and a ``.stages`` grid of
+   ``.stage-card`` slot boxes -- ported from the report scaffold, with its values
+   mapped onto the theme tokens. Absent front matter, the opening H1 and the
+   paragraph immediately after it are styled as an implicit hero (the ``h1 + p``
+   rule at the end of this section). */
+.report-hero {
+    padding-bottom: 34px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+}
+
+/* The header band carries the rule, so the in-hero title drops the global H1's
+   own bottom border and padding. */
+.report-hero h1 {
+    font-size: clamp(30px, 5vw, 46px);
+    margin: 0 0 20px;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 18px;
+}
+
+.lede {
+    font-size: 18px;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+}
+
+/* The slot rail: three cards across on desktop, stacked below 720px. */
+.stages {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 34px 0 0;
+}
+
+.stage-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 16px 18px;
+    box-shadow: var(--shadow);
+}
+
+.stage-card .n {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 8px;
+}
+
+.stage-card h3 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+}
+
+.stage-card p {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+    .stages {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Implicit hero for documents without front matter: the first paragraph after
+   the opening H1 reads as a lede. */
 h1 + p {
     font-size: 17px;
     color: var(--ink-soft);

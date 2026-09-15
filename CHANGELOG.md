@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A leading `---` front-matter block drives a report hero: an `eyebrow` kicker,
+  the `title` (which also sets the document `<title>`), a `lede`, and up to a
+  handful of `slot:` cards (`label | heading | body`), rendered as a header band
+  with a slot-card rail and styled by the `report` theme. Documents without a
+  front-matter block are unaffected.
 - `mermaid` fenced code blocks are pre-rendered to inline SVG at convert time,
   so diagrams need no runtime JavaScript and no network call. A diagram that
   fails to parse degrades to its source shown as a code block with a note.
