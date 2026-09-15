@@ -20,6 +20,7 @@ from mdtohtml.converter import (
     md_to_html,
     preprocess_captions,
     preprocess_chips,
+    preprocess_footer,
     preprocess_keyed_tables,
     preprocess_obsidian_callouts,
     preprocess_section_kickers,
@@ -931,6 +932,62 @@ class TestMdToHtmlChips:
         assert "alert(1)" not in html
         # The chip wrapper itself is intact; only the payload is neutralised.
         assert 'class="pchip blue"' in html
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Document footer (::: footer -> <footer>)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestPreprocessFooter:
+    def test_footer_container_becomes_footer_block(self) -> None:
+        result = preprocess_footer("::: footer\nTraced from X.\n:::")
+        assert '<footer class="doc-footer" markdown="1">' in result
+        assert "</footer>" in result
+        assert "Traced from X." in result
+
+    def test_unclosed_footer_runs_to_end(self) -> None:
+        result = preprocess_footer("::: footer\nlast line, no close")
+        assert '<footer class="doc-footer" markdown="1">' in result
+        assert "</footer>" in result
+
+    def test_other_container_is_not_a_footer(self) -> None:
+        md = "::: note\nhi\n:::"
+        assert preprocess_footer(md) == md
+
+    def test_footer_inside_code_is_untouched(self) -> None:
+        md = "```\n::: footer\nx\n:::\n```"
+        assert preprocess_footer(md) == md
+
+
+class TestMdToHtmlFooter:
+    def test_footer_renders_and_processes_inner_markdown(self) -> None:
+        out = md_to_html("::: footer\nTraced from **converter.py**.\n\n- a\n- b\n:::")
+        # The <footer> survives nh3 (the allowlist addition) -- this assertion
+        # would fail if ``footer`` were still stripped.
+        assert "<footer" in out
+        assert "</footer>" in out
+        # Inner markdown was processed by md_in_html.
+        assert "<strong>converter.py</strong>" in out
+        assert "<ul>" in out
+        # md_in_html consumes the marker attribute.
+        assert "markdown=" not in out
+
+    def test_no_footer_without_marker(self) -> None:
+        assert "<footer" not in md_to_html("Just body text.")
+
+    def test_hostile_footer_content_is_sanitised(self) -> None:
+        out = md_to_html("::: footer\n<img src=x onerror=alert(1)>\n:::")
+        assert "onerror" not in out
+        assert "<footer" in out
+
+
+class TestReportThemeFooter:
+    def test_report_css_styles_footer_and_file_bullets(self) -> None:
+        css = load_theme_css("report")
+        assert "footer.doc-footer" in css
+        # The file list gets chevron bullets.
+        assert "footer.doc-footer li::before" in css
 
 
 # ═══════════════════════════════════════════════════════════════════════

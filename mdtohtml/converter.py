@@ -447,6 +447,59 @@ def preprocess_captions(md_text: str) -> str:
     return _restore_code("\n".join(out), placeholders)
 
 
+# ── Footer Preprocessing ──
+
+
+# The opening / closing lines of a ``::: footer`` container. Only ``::: footer``
+# opens one; any other ``::: xxx`` is left literal. ``:::`` alone closes it.
+_FOOTER_OPEN = "::: footer"
+_FOOTER_CLOSE = ":::"
+
+
+def preprocess_footer(md_text: str) -> str:
+    """Convert a ``::: footer`` container to a ``<footer>`` region.
+
+    Converts::
+
+        ::: footer
+        Traced from **converter.py**.
+
+        - report.css
+        - converter.py
+        :::
+
+    to a ``<footer class="doc-footer" markdown="1">`` block whose inner Markdown
+    is processed by the ``md_in_html`` extension (so emphasis, links, and lists
+    work) and then sanitised by the normal ``nh3.clean`` pass -- the footer body
+    is ordinary author content, so it needs no special escaping. An unclosed
+    container runs to the end of the document. Fenced and inline code are
+    protected so a ``::: footer`` example inside code is never rewritten.
+    """
+    protected, placeholders = _protect_code(md_text)
+    lines = protected.split("\n")
+    out: list[str] = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        if lines[i].strip() == _FOOTER_OPEN:
+            i += 1
+            inner: list[str] = []
+            while i < n and lines[i].strip() != _FOOTER_CLOSE:
+                inner.append(lines[i])
+                i += 1
+            if i < n:  # consume the closing ``:::``
+                i += 1
+            out.append('<footer class="doc-footer" markdown="1">')
+            out.append("")
+            out.extend(inner)
+            out.append("")
+            out.append("</footer>")
+        else:
+            out.append(lines[i])
+            i += 1
+    return _restore_code("\n".join(out), placeholders)
+
+
 # ── Keyed Table Preprocessing ──
 
 
@@ -662,6 +715,9 @@ _MD_EXTENSIONS = [
     "pymdownx.arithmatex",
     "footnotes",
     "admonition",
+    # Processes Markdown inside a ``markdown="1"`` raw-HTML block -- used for the
+    # ``<footer>`` a ``::: footer`` container emits.
+    "md_in_html",
     "toc",
 ]
 
@@ -724,6 +780,7 @@ _NH3_ALLOWED_TAGS = {
     "sub",
     "figure",
     "figcaption",
+    "footer",
     "details",
     "summary",
     "dl",
@@ -863,6 +920,9 @@ def md_to_html(
 
         # Step 1e: Mark a ``{.keyed}`` table for an accent key column.
         md_text = preprocess_keyed_tables(md_text)
+
+        # Step 1f: Convert a ``::: footer`` container to a ``<footer>`` region.
+        md_text = preprocess_footer(md_text)
 
         # Step 2: Convert markdown to HTML
         md_converter = markdown.Markdown(

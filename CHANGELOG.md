@@ -68,6 +68,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   renders as a mono accent row-key. A `{.keyed}` line not above a real table, or
   one inside a code block, is left as literal text. Coloured status cells remain
   expressible with chips (`:green[done]` / `:red[blocked]`).
+- A `::: footer` ... `:::` container renders a styled document footer: under the
+  `report` theme a faint, top-ruled provenance region, with any list inside it
+  getting accent chevron bullets. The footer body is ordinary Markdown (emphasis,
+  links, lists all work). Documents without the container are unaffected.
 
 ### Changed
 

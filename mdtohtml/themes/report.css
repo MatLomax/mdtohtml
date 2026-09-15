@@ -1018,6 +1018,43 @@ tbody tr:last-child td {
     margin-left: 0.3em;
 }
 
+/* @section: footer
+   A ``::: footer`` container renders a styled document footer: a faint, top-ruled
+   provenance/notes region at the end of the page. A list inside it gets chevron
+   bullets (the scaffold's ``ul.files``). It prints, unlike the interactive TOC. */
+footer.doc-footer {
+    margin-top: 2.5em;
+    padding-top: 1.2em;
+    border-top: 1px solid var(--line);
+    color: var(--ink-faint);
+    font-size: 13px;
+}
+
+footer.doc-footer a {
+    color: var(--accent);
+}
+
+footer.doc-footer ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0.6em 0;
+}
+
+footer.doc-footer li {
+    position: relative;
+    padding-left: 1.2em;
+    margin-bottom: 0.2em;
+}
+
+footer.doc-footer li::before {
+    content: ">";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-weight: 700;
+}
+
 /* @section: images */
 img {
     max-width: 100%;
