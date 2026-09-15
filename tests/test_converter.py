@@ -900,6 +900,7 @@ class TestReportTheme:
         )
         out = convert(doc, "report")
         assert 'class="katex"' in out
-        assert 'class="mermaid-diagram"' in out
+        # A flowchart is tagged structural so the report theme can recolour it.
+        assert 'class="mermaid-diagram mermaid-structural"' in out
 
 

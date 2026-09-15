@@ -85,11 +85,29 @@ class TestRenderSuccess:
 
     def test_rendered_svg_is_wrapped_in_frame_div(self) -> None:
         # A successful diagram is framed so themes can border/scroll it and it
-        # is distinguishable from KaTeX's inline SVGs.
+        # is distinguishable from KaTeX's inline SVGs. The wrapper also carries a
+        # diagram-family class the theme keys its recolouring off.
         out = render_mermaid(FLOWCHART)
-        assert out.startswith('<div class="mermaid-diagram">')
+        assert out.startswith('<div class="mermaid-diagram')
         assert out.endswith("</div>")
         assert "<svg" in out
+
+    def test_flowchart_wrapper_is_tagged_structural(self) -> None:
+        out = render_mermaid(FLOWCHART)
+        assert 'class="mermaid-diagram mermaid-structural"' in out
+
+    def test_pie_wrapper_is_tagged_categorical(self) -> None:
+        out = render_mermaid('pie title P\n  "A" : 5\n  "B" : 3\n')
+        assert 'class="mermaid-diagram mermaid-categorical"' in out
+
+    def test_unknown_family_gets_no_extra_class(self) -> None:
+        # A diagram family the theme does not special-case keeps mermaid's own
+        # colours: the wrapper carries only the base frame class.
+        out = render_mermaid("journey\n  title J\n  section S\n  Task: 5: Me\n")
+        if "mermaid-error" not in out:  # only if the renderer supports it
+            assert 'class="mermaid-diagram"' in out
+            assert "mermaid-structural" not in out
+            assert "mermaid-categorical" not in out
 
     def test_degrade_path_is_not_wrapped_in_frame_div(self) -> None:
         # The failure fragment keeps its own ``mermaid-error`` wrapper.
@@ -120,6 +138,51 @@ class TestTheming:
                 if re.search(r'width="100%"|height="100%"', r)
             ]
             assert full_canvas == []
+
+
+def _hex_colour_important(svg: str) -> int:
+    """Count ``fill``/``stroke`` hex-colour ``!important`` decls in the style blob."""
+    style = re.search(r"<style>(.*?)</style>", svg, re.S)
+    body = style.group(1) if style else ""
+    return len(
+        re.findall(
+            r"(?<![\w-])(?:fill|stroke)\s*:\s*#[0-9A-Fa-f]{3,8}\s*!important", body
+        )
+    )
+
+
+class TestStructuralColourSoftening:
+    # mermaid pins some structural colours ``!important`` and id-scoped (e.g.
+    # ``#gd4 .composition``), which would outrank the theme's class-scoped
+    # recolour and leave relation markers grey/invisible on a dark card. The
+    # renderer strips ``!important`` from mermaid's hex ``fill``/``stroke`` for
+    # STRUCTURAL diagrams only, so the theme override wins by cascade order.
+
+    RELATIONS = "classDiagram\n A <|-- B\n A *-- C\n A o-- D\n A ..> E"
+    ER = "erDiagram\n CUSTOMER ||--o{ ORDER : places"
+
+    def test_structural_hex_colours_are_softened(self) -> None:
+        # Class + ER diagrams carry mermaid's id-scoped hex ``!important`` markers.
+        assert _hex_colour_important(render_mermaid(self.RELATIONS)) == 0
+        assert _hex_colour_important(render_mermaid(self.ER)) == 0
+
+    def test_hollow_arrowheads_keep_their_important(self) -> None:
+        # ``fill:transparent`` (aggregation/extension) and ``fill:none`` (ER
+        # marker) keep ``!important`` so the theme cannot solidify hollow heads.
+        style = re.search(
+            r"<style>(.*?)</style>", render_mermaid(self.RELATIONS), re.S
+        ).group(1)
+        assert re.search(r"fill\s*:\s*transparent\s*!important", style)
+        er_style = re.search(
+            r"<style>(.*?)</style>", render_mermaid(self.ER), re.S
+        ).group(1)
+        assert re.search(r"fill\s*:\s*none\s*!important", er_style)
+
+    def test_categorical_palette_is_not_softened(self) -> None:
+        # A gantt chart's data-carrying hues stay ``!important`` -- softening is
+        # scoped to structural diagrams, so the categorical palette is preserved.
+        gantt = "gantt\n title G\n section S\n T:a,2020-01-01,3d"
+        assert _hex_colour_important(render_mermaid(gantt)) > 0
 
 
 # ═══════════════════════════════════════════════════════════════════════

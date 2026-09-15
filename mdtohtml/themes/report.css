@@ -531,11 +531,19 @@ pre code {
 }
 
 /* @section: mermaid
-   A framed diagram card. mermaid SVG is rendered with the LIGHT theme under
-   this report theme (only the ``dark`` theme flips it), so the card pins a
-   light ground and ``color-scheme: light`` to keep the always-dark diagram text
-   legible in dark mode too. Scoped to ``.mermaid-diagram svg`` so KaTeX's inline
-   ``<svg>`` radicals are never touched. */
+   Diagrams are pre-rendered ONCE to inline SVG (a single baked colour set) using
+   mermaid's LIGHT palette. mermaid_render tags each wrapper with a family class:
+   ``mermaid-structural`` (flowchart/sequence/state/class/ER) is recoloured to the
+   theme palette below via tokens that auto-switch, so it reads in both schemes;
+   ``mermaid-categorical`` (pie/gantt) keeps its own data-carrying hues and is only
+   darkened in dark mode; any other family (journey/mindmap/timeline/gitgraph)
+   gets neither class and keeps mermaid's baked light colours. Every rule is
+   scoped under a mermaid wrapper class, so KaTeX's inline ``<svg>`` radicals are
+   never touched.
+
+   The base card is a pinned LIGHT panel so an unadapted family stays legible in
+   dark mode -- its baked #333 text would vanish on a dark ground. The adapted
+   families (structural/categorical) override the card to the theme tokens. */
 .mermaid-diagram {
     background: #fdfcf9;
     border: 1px solid #e3ddcf;
@@ -547,6 +555,13 @@ pre code {
     color-scheme: light;
 }
 
+.mermaid-diagram.mermaid-structural,
+.mermaid-diagram.mermaid-categorical {
+    background: var(--panel);
+    border-color: var(--line);
+    color-scheme: normal;
+}
+
 .mermaid-diagram svg {
     max-width: 100%;
     height: auto;
@@ -554,12 +569,128 @@ pre code {
     margin: 0 auto;
 }
 
+/* Structural recolour (flowchart/sequence/state/class/ER). The wrapper carries
+   ``mermaid-structural`` (set by mermaid_render from the diagram's role), so the
+   rules never touch pie/gantt or an untested type. ``!important`` here is required
+   because mermaid pins some colours ``!important`` too -- and some are id-scoped
+   (``#gd4 .composition{...}``), which OUTRANKS these class-scoped overrides. So
+   mermaid_render._soften_structural_colours strips ``!important`` from mermaid's
+   hex ``fill``/``stroke`` first; these ``!important`` overrides then win
+   regardless of specificity, while mermaid's ``fill:transparent`` / ``fill:none``
+   keep theirs so hollow arrowheads stay hollow. Node/box fills use ``--line-soft``
+   (delineated from the ``--panel`` card by an ``--ink-faint`` border); text
+   ``--ink``; edges/markers ``--ink-faint``. */
+.mermaid-structural svg text,
+.mermaid-structural svg tspan,
+.mermaid-structural svg .nodeLabel,
+.mermaid-structural svg .label {
+    fill: var(--ink) !important;
+    color: var(--ink) !important;
+}
+
+.mermaid-structural svg .node rect,
+.mermaid-structural svg .node circle,
+.mermaid-structural svg .node ellipse,
+.mermaid-structural svg .node polygon,
+.mermaid-structural svg .node path,
+.mermaid-structural svg .actor,
+.mermaid-structural svg .labelBox,
+.mermaid-structural svg .note,
+.mermaid-structural svg g.classGroup rect,
+.mermaid-structural svg .classLabel .box,
+.mermaid-structural svg .entityBox,
+.mermaid-structural svg .attributeBoxOdd,
+.mermaid-structural svg .attributeBoxEven,
+.mermaid-structural svg .statediagram-state rect,
+.mermaid-structural svg .stateLabel .box,
+.mermaid-structural svg .cluster rect,
+.mermaid-structural svg .statediagram-cluster rect {
+    fill: var(--line-soft) !important;
+    stroke: var(--ink-faint) !important;
+}
+
+/* Solid endpoint dots / fork bars stay ink so they read as filled marks. */
+.mermaid-structural svg .node circle.state-start,
+.mermaid-structural svg .node circle.state-end,
+.mermaid-structural svg .fork-join,
+.mermaid-structural svg .end-state-inner {
+    fill: var(--ink) !important;
+    stroke: var(--ink) !important;
+}
+
+/* Edges, lifelines, transitions, relations. */
+.mermaid-structural svg .edgePath .path,
+.mermaid-structural svg .flowchart-link,
+.mermaid-structural svg .messageLine0,
+.mermaid-structural svg .messageLine1,
+.mermaid-structural svg .actor-line,
+.mermaid-structural svg .loopLine,
+.mermaid-structural svg .transition,
+.mermaid-structural svg .relation,
+.mermaid-structural svg .relationshipLine,
+.mermaid-structural svg .extension,
+.mermaid-structural svg .composition,
+.mermaid-structural svg .aggregation,
+.mermaid-structural svg .dependency,
+.mermaid-structural svg g.classGroup line {
+    stroke: var(--ink-faint) !important;
+}
+
+/* Arrow/relation markers. The ER crow's-foot ``circle`` carries its own
+   ``fill="white"`` presentation attribute, so it is recoloured explicitly. */
+.mermaid-structural svg .marker,
+.mermaid-structural svg .arrowheadPath,
+.mermaid-structural svg marker path,
+.mermaid-structural svg [id$="-arrowhead"] path,
+.mermaid-structural svg [id$="-crosshead"] path {
+    fill: var(--ink-faint) !important;
+    stroke: var(--ink-faint) !important;
+}
+
+.mermaid-structural svg marker circle {
+    fill: var(--panel) !important;
+    stroke: var(--ink-faint) !important;
+}
+
+/* Solid class-diagram relation heads (composition diamond, dependency arrow)
+   carry a hex fill; recolour it. The hollow heads (aggregation, extension) keep
+   mermaid's ``fill:transparent`` and are left alone so they stay open. */
+.mermaid-structural svg .composition,
+.mermaid-structural svg .dependency {
+    fill: var(--ink-faint) !important;
+}
+
+/* Edge / relationship label backgrounds. */
+.mermaid-structural svg .edgeLabel rect,
+.mermaid-structural svg .edgeLabel .label rect,
+.mermaid-structural svg .relationshipLabelBox {
+    fill: var(--panel) !important;
+}
+
+/* Categorical diagrams (pie/gantt) keep their own hues; in dark mode the whole
+   diagram is darkened (same hues, darker) rather than re-rendered. The SVG is
+   baked with mermaid's LIGHT palette (the report theme renders diagrams light and
+   only this CSS adapts to dark), so every on-mark label is already paired with its
+   own mark -- dark ``.slice`` labels on pale wedges, light ``.taskText`` on the
+   coloured bars. Only CHROME text (title/legend/axis/section), which sits on the
+   card rather than a mark, is flipped to ``--ink`` so it reads on the dark panel;
+   on-mark labels are LEFT untouched so that pairing survives the darkening. */
+@media (prefers-color-scheme: dark) {
+    .mermaid-categorical svg {
+        filter: brightness(0.85) saturate(1.05);
+    }
+
+    .mermaid-categorical svg text:not(.slice):not(.taskText) {
+        fill: var(--ink) !important;
+    }
+}
+
 .mermaid-error {
     border: 1px solid var(--line);
     border-left: 4px solid #b0432c;
     border-radius: 8px;
-    background: #f6e2dc;
-    color: #5e2114;
+    background: rgba(176, 67, 44, 0.14);
+    color: var(--ink);
     padding: 12px 16px;
     margin: 20px 0;
 }
@@ -571,14 +702,23 @@ pre code {
     text-transform: uppercase;
     font-weight: 700;
     margin: 0 0 8px;
+    color: #a53a22;
 }
 
 .mermaid-error pre {
-    background: #ecccc1;
+    background: var(--panel);
     border: 0;
     box-shadow: none;
-    color: #5e2114;
+    color: var(--ink);
     margin: 0;
+}
+
+/* The failure-card title shares the warn red and the same dark-tint fix as the
+   callout titles. It lives here, AFTER the ``.mermaid-error-note`` base rule
+   above, so it is not shadowed by it at equal specificity (a media query adds
+   no specificity, so source order decides the tie). */
+@media (prefers-color-scheme: dark) {
+    .mermaid-error-note { color: #f2a291; }
 }
 
 /* @section: tables */

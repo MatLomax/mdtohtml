@@ -46,8 +46,77 @@ _MERMAID_CONFIG = {
 _THEME_DARK = "dark"
 _THEME_LIGHT = "default"
 
+# ``aria-roledescription`` values (set by mermaid on the SVG root) for the
+# diagram families the report theme styles explicitly. Structural diagrams are
+# recoloured to the theme palette; categorical pie/gantt keep their own hues and
+# are darkened in dark mode. Any other family gets neither class, so an untested
+# diagram type keeps mermaid's own colours rather than being mis-recoloured.
+_STRUCTURAL_ROLES = frozenset({
+    "flowchart-v2",
+    "flowchart",
+    "sequence",
+    "stateDiagram",
+    "stateDiagram-v2",
+    "class",
+    "classDiagram",
+    "er",
+})
+_CATEGORICAL_ROLES = frozenset({"pie", "gantt"})
+
 
 # ── SVG Rendering ──
+
+
+# A ``fill``/``stroke`` declaration whose value is a hex colour, carrying
+# ``!important``. Matches ``fill:`` / ``stroke:`` but not ``stroke-width`` or
+# ``stroke-dasharray`` (the colon does not sit right after ``stroke``), and only
+# hex values, so ``transparent`` / ``none`` / ``url(...)`` fills are left alone.
+_HEX_COLOUR_IMPORTANT = re.compile(
+    r"(?<![\w-])(fill|stroke)(\s*:\s*#[0-9A-Fa-f]{3,8})\s*!\s*important"
+)
+
+
+def _soften_structural_colours(svg: str) -> str:
+    """Drop ``!important`` from mermaid's baked hex ``fill``/``stroke`` colours.
+
+    mermaid emits its palette in an id-scoped ``<style>`` block, and pins some
+    colours with ``!important`` -- e.g. ``#gd4 .composition{stroke:#333!important}``
+    for class-diagram relation markers and ``#gd5 .marker{stroke:#333!important}``
+    for ER crow's-feet. An id selector outranks the theme's class-scoped
+    ``.mermaid-structural`` overrides, so on a dark card those markers would keep
+    mermaid's grey and be near-invisible. Removing ``!important`` from mermaid's
+    *hex-coloured* ``fill``/``stroke`` declarations lets the theme's ``!important``
+    overrides win regardless of specificity, while ``fill:transparent`` /
+    ``fill:none`` keep theirs -- so hollow arrowheads (aggregation, extension, ER)
+    stay hollow. Non-colour properties (``stroke-width``, ``stroke-dasharray``)
+    are untouched. Applied only to structural diagrams, which the theme fully
+    recolours; categorical/other diagrams keep every ``!important`` so their own
+    data-carrying palette is preserved.
+    """
+    return re.sub(
+        r"<style>(.*?)</style>",
+        lambda m: "<style>" + _HEX_COLOUR_IMPORTANT.sub(r"\1\2", m.group(1)) + "</style>",
+        svg,
+        flags=re.S,
+    )
+
+
+def _diagram_class(svg: str) -> str:
+    """Return the extra wrapper class for *svg*, keyed on its diagram family.
+
+    Reads the SVG root's ``aria-roledescription`` and maps it to
+    ``mermaid-structural`` (recoloured to the theme palette) or
+    ``mermaid-categorical`` (pie/gantt: own hues, darkened in dark mode). Any
+    other or missing role returns ``""`` so the diagram keeps mermaid's own
+    colours untouched.
+    """
+    match = re.search(r'aria-roledescription="([^"]*)"', svg)
+    role = match.group(1) if match else ""
+    if role in _STRUCTURAL_ROLES:
+        return " mermaid-structural"
+    if role in _CATEGORICAL_ROLES:
+        return " mermaid-categorical"
+    return ""
 
 
 def render_mermaid(source: str, *, dark: bool = False) -> str:
@@ -80,9 +149,14 @@ def render_mermaid(source: str, *, dark: bool = False) -> str:
         return _degrade_fragment(source, RuntimeError("renderer produced no SVG"))
 
     # Wrap the diagram in a framing div so themes can border/scroll it and it is
-    # distinguishable from the inline ``<svg>`` KaTeX draws for radicals. The
-    # wrapper is trusted, post-``nh3.clean`` output alongside the SVG it holds.
-    return f'<div class="mermaid-diagram">{svg}</div>'
+    # distinguishable from the inline ``<svg>`` KaTeX draws for radicals. A
+    # family class (structural/categorical) lets the theme recolour or darken it.
+    # The wrapper is trusted, post-``nh3.clean`` output alongside the SVG it holds.
+    cls = _diagram_class(svg)
+    if cls == " mermaid-structural":
+        # Let the theme's recolour reach mermaid's id-scoped ``!important`` markers.
+        svg = _soften_structural_colours(svg)
+    return f'<div class="mermaid-diagram{cls}">{svg}</div>'
 
 
 def _degrade_fragment(source: str, error: BaseException) -> str:
