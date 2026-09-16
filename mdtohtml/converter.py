@@ -319,13 +319,22 @@ _CHIP_RE = re.compile(
     r"(?<![\w:]):(" + "|".join(sorted(_CHIP_KEYS)) + r")\[([^\]]*)\]"
 )
 
+# The bare-text variant: ``:key{label}`` (curly braces) renders the label as
+# coloured, bold text with no pill -- ``<span class="ptext key">``. Same palette
+# keys and the same leading-token guard as the chip; the two never collide since
+# one takes ``[...]`` and the other ``{...}``.
+_PTEXT_RE = re.compile(
+    r"(?<![\w:]):(" + "|".join(sorted(_CHIP_KEYS)) + r")\{([^}]*)\}"
+)
+
 
 def preprocess_chips(md_text: str) -> str:
-    """Convert inline ``:key[label]`` chip syntax to a coloured ``<span>``.
+    """Convert inline ``:key[label]``/``:key{label}`` syntax to coloured spans.
 
     Converts, only when *key* is one of the categorical palette keys::
 
-        :blue[North]  →  <span class="pchip blue">North</span>
+        :blue[North]  →  <span class="pchip blue">North</span>   (a pill)
+        :blue{North}  →  <span class="ptext blue">North</span>   (bare bold text)
 
     A key outside the palette (``:other[x]``) and any other colon usage are left
     untouched. The label passes through markdown conversion and nh3 sanitisation
@@ -343,7 +352,13 @@ def preprocess_chips(md_text: str) -> str:
         label = m.group(2)
         return f'<span class="pchip {key}">{label}</span>'
 
+    def _replace_ptext(m: re.Match[str]) -> str:
+        key = m.group(1)
+        label = m.group(2)
+        return f'<span class="ptext {key}">{label}</span>'
+
     rewritten = _CHIP_RE.sub(_replace_chip, protected)
+    rewritten = _PTEXT_RE.sub(_replace_ptext, rewritten)
 
     return _restore_code(rewritten, placeholders)
 

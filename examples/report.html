@@ -498,6 +498,41 @@ blockquote p {
     .pchip.gray { background: rgba(170, 177, 189, 0.22); border-color: #cfd3da; color: #cfd3da; }
 }
 
+/* @section: coloured text
+   ``:key{text}`` renders bare, bold text in the palette colour with no pill
+   (``.ptext.<key>``) -- for colouring a status word inline or in a table cell.
+   Each key uses its family accent on the page in light and its brightened hue in
+   dark, mirroring the chip palette. */
+.ptext {
+    font-weight: 700;
+}
+
+.ptext.blue { color: #3f6f96; }
+.ptext.green { color: #4b7a45; }
+.ptext.amber { color: #9b6229; }
+.ptext.purple { color: #7a5a9e; }
+.ptext.teal { color: #3b7972; }
+.ptext.pink { color: #a8496f; }
+.ptext.lime { color: #727224; }
+.ptext.gold { color: #7f6e22; }
+.ptext.slate { color: #69707c; }
+.ptext.red { color: #b0432c; }
+.ptext.gray { color: #69707b; }
+
+@media (prefers-color-scheme: dark) {
+    .ptext.blue { color: #93c5fd; }
+    .ptext.green { color: #86efac; }
+    .ptext.amber { color: #fbbf24; }
+    .ptext.purple { color: #c4b5fd; }
+    .ptext.teal { color: #5eead4; }
+    .ptext.pink { color: #f472b6; }
+    .ptext.lime { color: #d4d46a; }
+    .ptext.gold { color: #e6cd82; }
+    .ptext.slate { color: #c2c8d2; }
+    .ptext.red { color: #f2a291; }
+    .ptext.gray { color: #cfd3da; }
+}
+
 /* @section: callouts
    Obsidian callouts render as python-markdown admonitions
    (``.admonition <type>`` + ``.admonition-title``). The base card mirrors
@@ -1489,7 +1524,9 @@ the other headings on this page.</p>
 <p>Ordinary prose with <strong>bold</strong>, <em>italic</em>, <code>inline code</code>, <del>struck-through</del>
 text, and <mark>highlighted</mark> phrases. A colon that is not a palette key stays
 literal: the meeting is at <code>10:30</code>, and a ratio like <code>3:1</code> is untouched. An
-inline chip mid-sentence reads <span class="pchip blue">in review</span> without disturbing the flow.</p>
+inline chip mid-sentence reads <span class="pchip blue">in review</span> without disturbing the flow.
+The same palette also colours bare text: <code>:green{yes}</code> renders <span class="ptext green">yes</span> and
+<code>:red{no}</code> renders <span class="ptext red">no</span> as bold coloured words with no pill.</p>
 <blockquote>
 <p>A blockquote for a pulled-out remark. It is distinct from a callout and
 renders as a plain quotation.</p>

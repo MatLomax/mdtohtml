@@ -903,6 +903,26 @@ class TestPreprocessChips:
         assert ":blue[North]" in result
         assert "pchip" not in result
 
+    def test_palette_key_brace_becomes_ptext_span(self) -> None:
+        assert (
+            preprocess_chips(":blue{North}")
+            == '<span class="ptext blue">North</span>'
+        )
+
+    def test_non_palette_key_brace_left_literal(self) -> None:
+        assert preprocess_chips(":other{x}") == ":other{x}"
+        assert preprocess_chips("plain {curly}") == "plain {curly}"
+
+    def test_chip_and_ptext_coexist(self) -> None:
+        result = preprocess_chips(":green[pill] and :green{bare}")
+        assert '<span class="pchip green">pill</span>' in result
+        assert '<span class="ptext green">bare</span>' in result
+
+    def test_ptext_in_inline_code_untouched(self) -> None:
+        result = preprocess_chips("Use `:blue{North}` bare.")
+        assert ":blue{North}" in result
+        assert "ptext" not in result
+
     def test_chip_in_fenced_code_untouched(self) -> None:
         md = "```\n:blue[North]\n```"
         result = preprocess_chips(md)
@@ -1481,6 +1501,15 @@ class TestReportTheme:
         assert "#8a5210" in title
         # Dark mode note title is amber too, not the old blue.
         assert ".admonition.note .admonition-title { color: #fbbf24; }" in css
+
+    def test_report_css_styles_bare_coloured_text(self) -> None:
+        css = load_theme_css("report")
+        base = re.search(r"\n\.ptext \{([^}]*)\}", css).group(1)
+        assert "font-weight: 700" in base
+        # A representative palette colour, light and (brighter) dark.
+        assert ".ptext.green { color: #4b7a45; }" in css
+        assert ".ptext.green { color: #86efac; }" in css
+        assert ".ptext.red { color: #b0432c; }" in css
 
     def test_keypoint_callout_becomes_admonition(self) -> None:
         out = md_to_html("> [!keypoint]\n> The one takeaway.")

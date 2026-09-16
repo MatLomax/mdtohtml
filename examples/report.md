@@ -24,6 +24,8 @@ Ordinary prose with **bold**, *italic*, `inline code`, ~~struck-through~~
 text, and ==highlighted== phrases. A colon that is not a palette key stays
 literal: the meeting is at `10:30`, and a ratio like `3:1` is untouched. An
 inline chip mid-sentence reads :blue[in review] without disturbing the flow.
+The same palette also colours bare text: `:green{yes}` renders :green{yes} and
+`:red{no}` renders :red{no} as bold coloured words with no pill.
 
 > A blockquote for a pulled-out remark. It is distinct from a callout and
 > renders as a plain quotation.

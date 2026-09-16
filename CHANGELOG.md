@@ -81,6 +81,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and no title -- for the one takeaway of a section, holding a lead paragraph and
   an optional amber-barred pull quote (a `> >` blockquote inside it). Under the
   `report` theme it is a white panel with an accent-line border and shadow.
+- Bare coloured text: `:key{text}` (the eleven palette keys, e.g. `:green{yes}` /
+  `:red{no}`) renders the text bold in the palette colour with no pill
+  (`<span class="ptext key">`) -- the plain-text companion to the `:key[label]`
+  chip. A key outside the palette, or the syntax inside code, is left literal.
 
 ### Changed
 
