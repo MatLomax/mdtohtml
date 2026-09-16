@@ -19,15 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fails to parse degrades to its source shown as a code block with a note.
 - Bundled example report sources under `examples/`: `report.md` is an exhaustive
   component reference under the `report` theme, exercising every combination that
-  inlines into one self-contained file -- the front-matter hero, section kickers
-  with a kicker-less fallback, headings `h2` through `h6` with `h2`/`h3` TOC
-  nesting, all eleven chip colours and all eleven bare coloured-text keys, all
-  fifteen callout families (with per-family inline-code tints), a keypoint card,
+  inlines into one self-contained file and pairing each with the Markdown source
+  that produces it. It is grouped into dedicated sections -- front matter, text
+  formatting, colouring (chips + bare coloured text), markers (section kickers +
+  captions), heading levels `h2` through `h6` with `h2`/`h3` TOC nesting, callouts,
+  lists, tables, code, math, and diagrams -- covering all eleven chip colours and
+  all eleven bare coloured-text keys, all fifteen callout families (with per-family
+  inline-code tints, plus custom and untitled forms) and a keypoint card,
   unordered/ordered/task lists, plain and keyed tables, plain/single-title/split-title
-  code cards with a banded `hl_lines` block, inline and display math, mermaid
-  diagrams in all three theme treatments (structural: flowchart, sequence, state,
-  class, ER, `classDef`-coloured; categorical: pie, gantt; and other: a base-card
-  journey) with split and single-label title bars, captions, and a document footer. It renders to a self-contained HTML sibling with `mdtohtml`; the generated `.html` file is regenerated from the source rather than committed.
+  code cards with a banded `hl_lines` block, inline and display math, and a titled
+  mermaid diagram card (showing how to add a diagram and set its header-bar title),
+  alongside a document footer. It renders to a self-contained HTML sibling with `mdtohtml`; the generated `.html` file is regenerated from the source rather than committed.
 - The `report` theme's table-of-contents sidebar has a collapse/expand toggle:
   the button in the sidebar header collapses it to a slim rail (the content
   column reclaims the width) and expands it again. The state is not persisted, so
