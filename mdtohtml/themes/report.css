@@ -617,6 +617,20 @@ blockquote p {
 .admonition.important .admonition-title,
 .admonition.warning .admonition-title { color: #8a5210; }
 
+/* Inline code inside a callout takes the callout's own colour -- a less
+   transparent tint of the family accent -- instead of the neutral grey chip. */
+.admonition.note code, .admonition.important code, .admonition.warning code { background: rgba(192, 122, 51, 0.25); }
+.admonition.danger code, .admonition.failure code { background: rgba(176, 67, 44, 0.25); }
+.admonition.tip code, .admonition.success code { background: rgba(75, 122, 69, 0.25); }
+.admonition.info code, .admonition.abstract code { background: rgba(63, 128, 121, 0.25); }
+.admonition.todo code, .admonition.example code { background: rgba(122, 90, 158, 0.25); }
+.admonition.question code { background: rgba(135, 135, 43, 0.25); }
+.admonition.quote code { background: rgba(124, 132, 146, 0.25); }
+.admonition.bug code { background: rgba(168, 73, 111, 0.25); }
+.admonition.keypoint code { background: rgba(178, 106, 0, 0.14); }
+/* A code BLOCK inside a callout keeps its own frame; only inline code is tinted. */
+.admonition pre code { background: none !important; }
+
 /* Failure/danger family: a red-tinted card like the sibling callouts, so it reads
    as a dark card in dark mode instead of a jarring pinned light-red panel. Body
    text uses --ink (high-contrast in both schemes) and code/links inherit the
@@ -717,7 +731,7 @@ pre code {
 .sheet-head .t {
     color: var(--ink-soft);
     font-weight: 700;
-    font-size: 11px;
+    font-size: 12px;
     /* The left label keeps its source case; only the right meta is uppercased. */
     text-transform: none;
 }
@@ -725,7 +739,7 @@ pre code {
 .sheet-head .r {
     color: var(--ink-faint);
     font-weight: 400;
-    font-size: 10px;
+    font-size: 11px;
 }
 
 .highlight:has(.sheet-head) {
@@ -880,7 +894,7 @@ pre code {
 .mermaid-header .mh-left {
     color: #4a515c;
     font-weight: 700;
-    font-size: 11px;
+    font-size: 12px;
     /* The left label keeps its source case; only the right meta is uppercased. */
     text-transform: none;
 }
@@ -888,7 +902,7 @@ pre code {
 .mermaid-header .mh-right {
     color: #767e8b;
     font-weight: 400;
-    font-size: 10px;
+    font-size: 11px;
 }
 
 /* Adapted diagram cards ride on ``var(--panel)``, so their header keeps the

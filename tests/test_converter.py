@@ -1538,6 +1538,27 @@ class TestReportTheme:
         assert ".ptext.green { color: #86efac; }" in css
         assert ".ptext.red { color: #b0432c; }" in css
 
+    def test_report_css_callout_inline_code_uses_family_colour(self) -> None:
+        css = load_theme_css("report")
+        # Inline code in a note callout takes the amber family tint (less
+        # transparent than the callout's own 0.12 background).
+        m = re.search(r"\.admonition\.note code[^{]*\{([^}]*)\}", css)
+        assert m is not None
+        assert "rgba(192, 122, 51, 0.25)" in m.group(1)
+        # A code BLOCK inside a callout keeps its own frame (only inline tinted).
+        assert re.search(r"\.admonition pre code \{[^}]*background: none", css)
+
+    def test_report_css_card_header_font_matches_reference(self) -> None:
+        css = load_theme_css("report")
+        for sel in (r"\.mermaid-header \.mh-left", r"\.sheet-head \.t"):
+            assert "font-size: 12px" in re.search(
+                sel + r" \{([^}]*)\}", css
+            ).group(1)
+        for sel in (r"\.mermaid-header \.mh-right", r"\.sheet-head \.r"):
+            assert "font-size: 11px" in re.search(
+                sel + r" \{([^}]*)\}", css
+            ).group(1)
+
     def test_keypoint_callout_becomes_admonition(self) -> None:
         out = md_to_html("> [!keypoint]\n> The one takeaway.")
         assert 'class="admonition keypoint"' in out

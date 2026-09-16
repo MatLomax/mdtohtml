@@ -93,8 +93,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The `report` theme's layout is tuned to the report scaffold: a wider content
   column, larger (non-collapsing) spacing above section headings, and code and
-  diagram card headers whose left-hand title keeps its source case while the
-  right-hand meta note stays uppercased.
+  diagram card headers at the reference's type size whose left-hand title keeps
+  its source case while the right-hand meta note stays uppercased.
+- Inline code inside a callout takes the callout's own colour -- a less
+  transparent tint of the family accent, or the house accent for the family-less
+  keypoint card -- instead of the neutral grey chip.
 - Unordered lists in the `report` theme use an accent `›` chevron as their
   bullet -- the same marker as the document footer, made the house bullet --
   with nested levels stepping back to a more transparent shade. Ordered lists
