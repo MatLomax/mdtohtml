@@ -103,6 +103,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Task-list items in the `report` theme now line their text up with unordered and
+  ordered list items on one shared left edge, the checkbox sitting in the same
+  left gutter as the chevron and number, instead of being indented a step further
+  right.
 - A table-of-contents link now lands above its section's kicker rather than
   scrolling it off the top: a kicker-preceded heading carries a `scroll-margin-top`,
   and the scrollspy marks a section active once it reaches that same landing line
@@ -139,9 +143,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unordered lists in the `report` theme use an accent `›` chevron as their
   bullet -- the same marker as the document footer, made the house bullet --
   with nested levels stepping back to a more transparent shade. Ordered lists
-  render their number as a mono accent counter sitting in the same gutter, the
-  same distance from the item text as the chevron. Task lists, the
-  table-of-contents, and footnotes keep their own markers.
+  render their number as a bare mono accent counter aligned to the chevron's
+  gutter, so a single-digit number's left edge lines up under the chevron while a
+  wider number extends into the gutter rather than crowding the item text. The
+  table-of-contents and footnotes keep their own markers.
 - Math is now pre-rendered to static KaTeX markup at convert time. The output
   carries the KaTeX stylesheet and fonts but no JavaScript engine; math-free
   documents still ship zero KaTeX bytes.

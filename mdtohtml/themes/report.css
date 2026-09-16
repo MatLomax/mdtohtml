@@ -342,8 +342,9 @@ li {
 
 /* Unordered lists take the accent chevron as their marker -- the same glyph the
    footer uses, made the house bullet -- sitting in the list's left gutter.
-   Ordered lists keep their numbers; task-list items (their own checkbox) and the
-   TOC (suppressed below) are excluded, and the footer keeps its own later rule. */
+   Ordered lists align their number to the same gutter position; task-list items
+   (their own checkbox) and the TOC (suppressed below) are excluded, and the
+   footer keeps its own later rule. */
 ul > li:not(.task-list-item) {
     position: relative;
 }
@@ -363,9 +364,11 @@ ul > li:not(.task-list-item)::before {
     opacity: 0.45;
 }
 
-/* Ordered lists render their number as a mono accent counter in the same gutter
-   as the unordered chevron, right-aligned against the list text so the marker
-   sits the same distance from the item whatever its digit count. */
+/* Ordered lists render their number as a bare mono accent counter right-aligned to
+   a fixed edge a set distance before the item text, matching the unordered
+   chevron: a single-digit number's left edge sits under the chevron, and a wider
+   number extends further into the left gutter rather than crowding the text.
+   Both lists' text starts at the shared padding edge. */
 ol {
     list-style: none;
     counter-reset: ol-item;
@@ -377,7 +380,7 @@ ol > li {
 }
 
 ol > li::before {
-    content: counter(ol-item) ".";
+    content: counter(ol-item);
     position: absolute;
     right: 100%;
     margin-right: 0.5em;
@@ -392,11 +395,13 @@ li > ol {
     margin-bottom: 0.2em;
 }
 
-/* @section: task-list */
+/* @section: task-list
+   A task item lands its text at the shared list padding edge (``1.6em``), the same
+   as an unordered or ordered item, with the checkbox pulled back into the left
+   gutter by a first-line ``text-indent`` -- so all three list kinds line their
+   text up on one left edge. */
 .task-list-item {
     list-style-type: none;
-    margin-left: -1.4em;
-    padding-left: 1.6em;
     text-indent: -1.6em;
 }
 
@@ -410,7 +415,7 @@ li > ol {
     height: 19px;
     border: 2px solid var(--accent);
     border-radius: 4px;
-    margin-right: 0.5em;
+    margin-right: 0.4em;
     vertical-align: middle;
     position: relative;
     top: -1px;
