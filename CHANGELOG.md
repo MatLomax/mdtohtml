@@ -17,12 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `mermaid` fenced code blocks are pre-rendered to inline SVG at convert time,
   so diagrams need no runtime JavaScript and no network call. A diagram that
   fails to parse degrades to its source shown as a code block with a note.
-- A bundled example report (`examples/report.md` and its self-contained
-  `examples/report.html`) exercising every supported component under the `report`
-  theme: the front-matter hero, callouts, tables with chips, task lists, math,
-  titled mermaid diagrams, section kickers, captions, a banded `hl_lines` code
-  block, a titled code sheet, a keyed table, a keypoint card, and a document
-  footer.
+- Bundled example report sources under `examples/`: `report.md` exercises every
+  supported component under the `report` theme (the front-matter hero, callouts,
+  tables with chips, task lists, math, titled mermaid diagrams, section kickers,
+  captions, a banded `hl_lines` code block, a titled code sheet, a keyed table, a
+  keypoint card, and a document footer). It renders to a self-contained HTML sibling with `mdtohtml`; the generated `.html` file is regenerated from the source rather than committed.
 - The `report` theme's table-of-contents sidebar has a collapse/expand toggle:
   the button in the sidebar header collapses it to a slim rail (the content
   column reclaims the width) and expands it again. The state is not persisted, so

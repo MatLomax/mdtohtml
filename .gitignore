@@ -7,3 +7,6 @@ build/
 .pytest_cache/
 .tmp/
 .worklog/
+
+# Generated example HTML: regenerated from the examples/*.md sources, not committed.
+examples/*.html

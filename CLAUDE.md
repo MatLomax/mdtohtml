@@ -27,3 +27,16 @@ commit** — do not commit a user-facing change without its changelog line.
 Purely internal commits with no user-visible effect — these project rules, the
 `CHANGELOG.md` file itself, test-only changes, tooling — are exempt.
 
+## Examples: track the sources, regenerate the outputs, never commit the HTML
+
+The `examples/` folder holds each example's Markdown **source** (`*.md`, tracked)
+beside its generated HTML **output** (`*.html`, gitignored via `examples/*.html`
+and never committed). The rendered HTML is a build artifact, not source.
+
+- **Regenerate every example after any change that affects its output** — an
+  example source, the converter, or a theme — so the local outputs never drift.
+  Render in place with the CLI, e.g.
+  `mdtohtml examples/<name>.md -o examples/ --theme report --toc`, once per source.
+- **Commit only the `.md` sources.** The `.html` siblings stay in `examples/`
+  locally (open them to preview) but are regenerated, not tracked.
+
