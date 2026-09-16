@@ -457,6 +457,15 @@ blockquote p {
     margin: 0.3em 0;
 }
 
+/* In dark mode the soft ink used for quoted text sits too dim against the panel,
+   so quotes lift to the full body ink; the border and tinted ground still set the
+   quote apart. */
+@media (prefers-color-scheme: dark) {
+    blockquote {
+        color: var(--ink);
+    }
+}
+
 /* @section: chips
    The categorical palette, ported verbatim from report_template's PALETTE.
    In light mode a chip is a pale ground with dark ink; in dark mode (the block
