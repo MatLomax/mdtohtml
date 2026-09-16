@@ -27,6 +27,10 @@ into styled, standalone HTML.
 - **Pre-rendered diagrams.** A ` ```mermaid ` fenced block is rendered to
   inline SVG at convert time, so diagrams need no runtime JavaScript and no
   network call.
+- **Self-contained images.** An image embedded as a `data:` URI is preserved,
+  so a picture ships inside the HTML with no separate asset or network fetch.
+  For safety a `data:` URI is accepted only as an image source and only for
+  image MIME types; every other `data:` payload is stripped.
 - **Single-file output.** Each converted document is one portable,
   self-contained HTML file.
 

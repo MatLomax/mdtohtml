@@ -11,6 +11,7 @@ from mdtohtml.converter import (
     TOC_JS,
     _build_toc_nav,
     _extract_headings,
+    _render_inline,
     _style_code_headers,
     _wrap_tables,
     convert,
@@ -946,6 +947,79 @@ class TestSecurityFixes:
         html = md_to_html(md)
         assert "\x00" not in html
         assert "realcode" in html
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# data: URI image embedding (scoped to img src, image MIME only)
+# ═══════════════════════════════════════════════════════════════════════
+
+_PNG_DATA_URI = (
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAA"
+    "C0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+_SVG_DATA_URI = "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="
+_HTML_DATA_URI = "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="
+
+
+class TestDataUriImages:
+    def test_png_data_uri_image_survives(self) -> None:
+        """A base64 PNG keeps its src so a self-contained image renders."""
+        html = md_to_html(f"![chart]({_PNG_DATA_URI})")
+        assert f'src="{_PNG_DATA_URI}"' in html
+
+    def test_svg_data_uri_image_survives(self) -> None:
+        """A data:image/svg+xml src survives (img-loaded SVG cannot script)."""
+        html = md_to_html(f"![vector]({_SVG_DATA_URI})")
+        assert f'src="{_SVG_DATA_URI}"' in html
+
+    def test_https_image_src_still_survives(self) -> None:
+        """Widening the scheme set must not disturb ordinary remote images."""
+        html = md_to_html("![remote](https://example.com/a.png)")
+        assert 'src="https://example.com/a.png"' in html
+
+    def test_non_image_data_uri_dropped_from_img_src(self) -> None:
+        """A data:text/html payload on an img src is stripped, not rendered."""
+        html = md_to_html(f"![x]({_HTML_DATA_URI})")
+        assert "data:text/html" not in html
+        assert "src=" not in html
+
+    def test_data_uri_dropped_from_link_href(self) -> None:
+        """A data: URI on a link (an XSS vector) is dropped even for images."""
+        html = md_to_html(f"[click]({_HTML_DATA_URI})")
+        assert "data:text/html" not in html
+        assert "href=" not in html
+
+    def test_data_image_uri_dropped_from_link_href(self) -> None:
+        """Even a data:image URI is not allowed as a link target."""
+        html = md_to_html(f"[click]({_PNG_DATA_URI})")
+        assert "data:image" not in html
+        assert "href=" not in html
+
+    @pytest.mark.parametrize(
+        "obfuscated",
+        [
+            "DATA:text/html;base64,PHNjcmlwdD4=",  # scheme case
+            "  data:text/html;base64,PHNjcmlwdD4=",  # leading spaces
+            "da\tta:text/html;base64,PHNjcmlwdD4=",  # tab inside scheme
+            "&#100;ata:text/html;base64,PHNjcmlwdD4=",  # entity-encoded 'd'
+        ],
+    )
+    def test_obfuscated_data_uri_dropped_from_link(self, obfuscated: str) -> None:
+        """An obfuscated data: scheme a browser would still honour is dropped."""
+        html = md_to_html(f'<a href="{obfuscated}">x</a>')
+        assert "text/html" not in html
+        assert "href=" not in html
+
+    def test_ordinary_link_schemes_still_survive(self) -> None:
+        """http/https/mailto links are unaffected by the narrowed data policy."""
+        html = md_to_html("[site](https://example.com) and [mail](mailto:a@b.com)")
+        assert 'href="https://example.com"' in html
+        assert 'href="mailto:a@b.com"' in html
+
+    def test_hero_inline_path_shares_the_policy(self) -> None:
+        """The inline (hero) sanitiser drops data: links and keeps data images."""
+        assert "data:text/html" not in _render_inline(f"[x]({_HTML_DATA_URI})")
+        assert f'src="{_PNG_DATA_URI}"' in _render_inline(f"![x]({_PNG_DATA_URI})")
 
 
 # ═══════════════════════════════════════════════════════════════════════
