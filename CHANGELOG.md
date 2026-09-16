@@ -107,6 +107,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ordered list items on one shared left edge, the checkbox sitting in the same
   left gutter as the chevron and number, instead of being indented a step further
   right.
+- Blockquote text in the `report` theme's dark mode lifts to the full body ink so
+  quotes no longer read too dim against the panel; the border and tinted ground
+  still set the quote apart, and light mode is unchanged.
 - A table-of-contents link now lands above its section's kicker rather than
   scrolling it off the top: a kicker-preceded heading carries a `scroll-margin-top`,
   and the scrollspy marks a section active once it reaches that same landing line
