@@ -1468,6 +1468,20 @@ class TestReportTheme:
         assert "border-top:" in m.group(1)
         assert "font-size: 13px" in m.group(1)
 
+    def test_report_css_note_callout_is_amber(self) -> None:
+        css = load_theme_css("report")
+        # The note callout uses the amber accent (like warning), not the blue it
+        # had before -- matching the reference.
+        note = re.search(r"\.admonition\.note \{([^}]*)\}", css).group(1)
+        assert "#c07a33" in note
+        assert "#3f6f96" not in note
+        title = re.search(
+            r"\.admonition\.note \.admonition-title \{([^}]*)\}", css
+        ).group(1)
+        assert "#8a5210" in title
+        # Dark mode note title is amber too, not the old blue.
+        assert ".admonition.note .admonition-title { color: #fbbf24; }" in css
+
     def test_report_css_centres_the_task_checkmark(self) -> None:
         css = load_theme_css("report")
         # A ticked box's checkmark is centre-anchored, not pinned to a fixed

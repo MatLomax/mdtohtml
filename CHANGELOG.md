@@ -95,6 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Under the `report` theme's dark mode, callouts render as tinted cards that
   follow the colour scheme rather than any callout keeping a fixed light-red
   ground, and every callout title meets WCAG AA contrast in both light and dark.
+- The `report` theme's note callout uses the amber accent -- border, tint, and
+  mono title -- rather than blue, matching the reference's default callout.
 - The `report` theme's warning callout uses an amber accent (matching the
   important callout) instead of sharing the red of failure and danger, so a
   warning is no longer visually identical to a danger.
