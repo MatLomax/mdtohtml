@@ -1,41 +1,104 @@
 ---
 eyebrow: mdtohtml · component reference
 title: Release Readiness Report
-lede: A single self-contained page exercising every component that inlines into one file --- typography and headings `h2` through `h6`, all fifteen callout families, plain and keyed tables, task lists, footnotes, wikilinks, syntax highlighting, coloured chips and text, pre-rendered math, pre-rendered mermaid diagrams in all three theme treatments (structural, categorical, and other), section kickers, captions, titled code and diagram cards, and a document footer. This line is the report **lede**.
+lede: A single self-contained page exercising every component that inlines into one file, each shown with the Markdown source that produces it --- the front-matter hero, typography and headings `h2` through `h6`, coloured chips and text, section kickers and captions, all fifteen callout families, plain and keyed tables, task lists, math, titled code and diagram cards, and a document footer. This line is the report **lede**.
 slot: Shipped | Server-side rendering | Math and diagrams are pre-rendered at convert time and carry no runtime engine; the only script is the optional table-of-contents sidebar.
 slot: Themed | Report theme | Warm, AA-accessible, and auto light/dark via `prefers-color-scheme`.
 slot: Portable | Single file | Every asset inlines into one self-contained HTML document.
 ---
 
-^ Legend
-## Status legend
+^ Front matter
+## The report hero
 
-Coloured chips (`:key[label]`) render categorical pills in all eleven palette keys:
-:green[shipped] :blue[in review] :amber[at risk] :red[blocked] :slate[deferred]
-:purple[spike] :teal[docs] :pink[design] :lime[qa] :gold[release] :gray[backlog]
+A leading `---` block supplies the hero above: an `eyebrow` kicker, the `title`
+(which also sets the document `<title>`), a `lede`, and up to a handful of `slot:`
+cards split `label | heading | body`. The `lede` and slot fields accept inline
+markdown. This block produced the header at the top of the page:
 
-A section can lead with a `^ Label` kicker --- the small mono line above this and
-the other headings on this page.
+```markdown
+---
+eyebrow: mdtohtml · component reference
+title: Release Readiness Report
+lede: A one-paragraph intro that may carry **inline markdown**.
+slot: Shipped | Server-side rendering | Zero runtime JavaScript.
+slot: Themed | Report theme | Auto light/dark, AA-safe.
+slot: Portable | Single file | Everything inlines into one HTML file.
+---
+```
 
 ^ Formatting
 ## Text and inline formatting
 
-Ordinary prose with **bold**, *italic*, `inline code`, ~~struck-through~~
-text, and ==highlighted== phrases. A colon that is not a palette key stays
-literal: the meeting is at `10:30`, and a ratio like `3:1` is untouched. An
-inline chip mid-sentence reads :blue[in review] without disturbing the flow.
+The inline span constructs and the block quote:
 
-The same palette also colours bare text with no pill (`:key{label}`):
-:blue{blue} :green{green} :amber{amber} :purple{purple} :teal{teal} :pink{pink}
-:lime{lime} :gold{gold} :slate{slate} :red{red} :gray{gray}.
+```markdown
+Ordinary prose with **bold**, *italic*, `inline code`, ~~struck-through~~
+text, and ==highlighted== phrases. Typographic dashes: en `--` and em `---`.
+
+> A blockquote for a pulled-out remark, distinct from a callout.
+```
+
+Ordinary prose with **bold**, *italic*, `inline code`, ~~struck-through~~
+text, and ==highlighted== phrases. Typographic dashes render an en-dash from `--`
+and an em-dash from `---`; straight quotes and `...` are left as typed. A colon
+that is not a palette key stays literal: the meeting is at `10:30`, and a ratio
+like `3:1` is untouched.
 
 > A blockquote for a pulled-out remark. It is distinct from a callout and
 > renders as a plain quotation.
 
-Here is a footnote reference[^1], resolved at the foot of the page. And an
-Obsidian wikilink to a sibling page: [[Architecture Overview]], one with
-custom text [[Architecture Overview|the design doc]], and one to a heading
+Footnotes and Obsidian wikilinks resolve to the `.html` sibling of each page:
+
+```markdown
+A footnote reference[^1]. A wikilink [[Architecture Overview]], one with custom
+text [[Architecture Overview|the design doc]], and one to a heading
 [[Architecture Overview#Data Flow]].
+```
+
+A footnote reference[^1], resolved at the foot of the page. A wikilink to a
+sibling page: [[Architecture Overview]], one with custom text
+[[Architecture Overview|the design doc]], and one to a heading
+[[Architecture Overview#Data Flow]].
+
+^ Colouring
+## Chips and coloured text
+
+An inline `:key[label]` renders a categorical pill; `:key{label}` renders bare
+bold text in the same colour with no pill. A key outside the eleven-colour
+palette, or one glued to a preceding word, is left literal.
+
+```markdown
+Chips: :green[shipped] :blue[in review] :amber[at risk]
+Bare text: :green{yes} :red{no}
+```
+
+Chips in all eleven palette keys:
+:green[shipped] :blue[in review] :amber[at risk] :red[blocked] :slate[deferred]
+:purple[spike] :teal[docs] :pink[design] :lime[qa] :gold[release] :gray[backlog]
+
+The same palette as bare coloured text:
+:blue{blue} :green{green} :amber{amber} :purple{purple} :teal{teal} :pink{pink}
+:lime{lime} :gold{gold} :slate{slate} :red{red} :gray{gray}.
+
+An inline chip mid-sentence reads :blue[in review] without disturbing the flow.
+
+^ Markers
+## Section kickers and captions
+
+A `^ Label` line immediately above a heading becomes a muted mono kicker leading
+the section --- every heading on this page uses one. A `~ text` line becomes a
+small faint caption, most useful directly under a diagram, code block, or table.
+
+```markdown
+^ The symptom
+## What it reports
+
+~ A caption sits under the block above it.
+```
+
+The `~` marker below renders as a caption:
+
+~ A caption, tucked under the block above it.
 
 ^ Headings
 ## Heading levels
@@ -43,30 +106,50 @@ custom text [[Architecture Overview|the design doc]], and one to a heading
 The theme styles every heading level distinctly, even those below the
 table-of-contents depth (which stops at `h3`).
 
+```markdown
+## Section (h2)
+### Subsection (h3)
+#### Level four
+##### Level five
+###### Level six
+```
+
 ### Level three
 
-A third-level subsection --- listed in the sidebar, nested under its section.
+A third-level subsection, nested under its section in the sidebar.
 
 #### Level four
 
-A fourth-level heading: styled, but below the TOC depth so it stays out of the
-sidebar.
+A fourth-level heading, below the table-of-contents depth.
 
 ##### Level five
 
-A fifth-level heading, rendered as a small mono uppercase label.
+A fifth-level heading.
 
 ###### Level six
 
-A sixth-level heading, rendered in faint italic.
-
----
+A sixth-level heading.
 
 ^ Callouts
 ## Callout cards
 
-The `report` theme renders all fifteen Obsidian callout families as tinted cards
-with a mono uppercase title; inline `code` inside each picks up its family tint.
+An Obsidian callout is `> [!type]` with optional continuation lines. The text
+after the type is a title: omit it for the capitalised default, or write your own
+to override it. A `keypoint` takes no title at all.
+
+```markdown
+> [!note]
+> A default title (the capitalised type) and body with `code`.
+
+> [!warning] Heads up
+> A custom title --- any text after the type replaces the default.
+
+> [!keypoint]
+> No title: a plain elevated card for the one takeaway.
+```
+
+The `report` theme styles all fifteen families; inline `code` inside each picks
+up its family tint.
 
 > [!note] Note
 > The `note` family wears the amber/rust accent, shared with `warning` and
@@ -95,10 +178,10 @@ with a mono uppercase title; inline `code` inside each picks up its family tint.
 > The `question` family uses an olive accent for an open `decision` awaiting an
 > answer.
 
-> [!warning] Warning
-> The warning callout uses an amber accent --- distinct from the red danger
-> family --- with an AA-safe title in both light and dark colour schemes. Wrap a
-> risky `flag` in it.
+> [!warning] Heads up
+> A custom title in place of the default. The warning callout uses an amber
+> accent --- distinct from the red danger family --- with an AA-safe title in
+> both colour schemes. Wrap a risky `flag` in it.
 
 > [!important] Important
 > The `important` callout rides the amber family with `warning`, so it never
@@ -131,6 +214,22 @@ with a mono uppercase title; inline `code` inside each picks up its family tint.
 ^ Lists
 ## Lists and tasks
 
+Unordered, ordered, and task lists all line their text up on one left edge:
+
+```markdown
+- First item
+- Second item, with a nested list
+    - Nested one
+    - Nested two
+
+1. Prepare the build
+2. Run the full gate
+3. Ship the release
+
+- [x] A completed task
+- [ ] An open task
+```
+
 Unordered:
 
 - First item
@@ -152,14 +251,19 @@ Task list:
 - [x] Aggregate third-party notices
 - [ ] Tag the release
 
-^ Data
+^ Tables
 ## Tables
 
-Tables are wrapped in a card. Under the `report` theme cells wrap to fit the
-content column, falling back to scrolling within the card only when a viewport is
-narrower than the table's floor width.
+Tables render inside a card, wrapping to fit the content column.
 
 ### A plain table
+
+```markdown
+| Component | Owner | Coverage |
+|-----------|-------|----------|
+| Converter | core  | 92% |
+| Rendering | core  | 88% |
+```
 
 | Component | Owner | Coverage |
 |-----------|-------|----------|
@@ -171,6 +275,14 @@ narrower than the table's floor width.
 
 A `{.keyed}` line above a table styles its first column as an accent key, and
 status cells stay expressive with chips:
+
+```markdown
+{.keyed}
+| Component | Owner | Status |
+|-----------|-------|--------|
+| Math (KaTeX SSR) | core | :green[shipped] |
+| Report theme | ui | :blue[in review] |
+```
 
 {.keyed}
 | Component | Owner | Status | Notes |
@@ -186,6 +298,14 @@ status cells stay expressive with chips:
 
 A plain fence highlights with no header card:
 
+````markdown
+```python
+from mdtohtml.converter import convert
+
+html = convert(open("notes.md").read(), theme_name="report", toc=True)
+```
+````
+
 ```python
 from mdtohtml.converter import convert
 
@@ -193,6 +313,13 @@ html = convert(open("notes.md").read(), theme_name="report", toc=True)
 ```
 
 A `title=` adds a header card. A single title is one left-aligned label:
+
+````markdown
+```{.python title="converter.py"}
+def convert(md: str, theme_name: str) -> str:
+    ...
+```
+````
 
 ```{.python title="converter.py"}
 def convert(md: str, theme_name: str) -> str:
@@ -202,6 +329,7 @@ def convert(md: str, theme_name: str) -> str:
 A `left | right` title splits across the header, and `hl_lines` bands the lines
 under discussion (space-separated line numbers):
 
+````markdown
 ```{.python title="mdtohtml.converter | build()" hl_lines="5 6"}
 from mdtohtml.converter import convert
 
@@ -210,10 +338,29 @@ def build(md: str) -> str:
     doc = convert(md, theme_name="report", toc=True)
     return doc
 ```
-~ The single entry point callers use; the two banded lines run and return the conversion.
+````
+
+```{.python title="mdtohtml.converter | build()" hl_lines="5 6"}
+from mdtohtml.converter import convert
+
+def build(md: str) -> str:
+    """Convert markdown to a self-contained HTML document."""
+    doc = convert(md, theme_name="report", toc=True)
+    return doc
+```
 
 ^ Math
 ## Mathematics
+
+Inline math uses single `$` delimiters and display math uses `$$`:
+
+```markdown
+The relation is $E = mc^2$.
+
+$$
+\int_0^\infty \frac{x^{s-1}}{e^{x} - 1}\,dx = \Gamma(s)\,\zeta(s)
+$$
+```
 
 Inline math flows in a sentence: the mass-energy relation is $E = mc^2$, and
 Euler's identity is $e^{i\pi} + 1 = 0$.
@@ -235,156 +382,65 @@ $$
 ^ Diagrams
 ## Diagrams
 
-Every mermaid fence is pre-rendered to inline SVG at convert time --- no runtime
-JavaScript, no network call.
+A `mermaid` fenced code block is pre-rendered to inline SVG at convert time ---
+no runtime JavaScript, no network call. See mermaid's own docs for the diagram
+types and their syntax; what the `report` theme adds is the framing.
 
-### Structural diagrams
+Set a `title:` in the diagram's front matter and it is lifted out of the canvas
+into the card's header bar. A `left | right` title splits into a left label and a
+right-aligned meta note; a single label (no `|`) renders as one left-aligned
+title.
 
-Structural diagrams (flowchart, sequence, state, class, ER) are recoloured to the
-theme palette and adapt to dark mode.
-
-A flowchart. Its `title:` front-matter field is lifted out of the canvas into the
-card's header bar, and a `left | right` title splits across it:
+````markdown
+```mermaid
+---
+title: Conversion pipeline | mdtohtml
+---
+graph TD
+  A[Author writes markdown] --> B{Pre-render needed?}
+  B -->|yes| C[Render math + diagrams]
+  B -->|no| D[Plain conversion]
+  C --> E[Sanitise + assemble]
+  D --> E
+  E --> F[Self-contained HTML]
+```
+````
 
 ```mermaid
 ---
 title: Conversion pipeline | mdtohtml
 ---
 graph TD
-  A[Author writes markdown] --> B{Has math or diagrams?}
-  B -->|yes| C[Pre-render at convert time]
+  A[Author writes markdown] --> B{Pre-render needed?}
+  B -->|yes| C[Render math + diagrams]
   B -->|no| D[Plain conversion]
   C --> E[Sanitise + assemble]
   D --> E
   E --> F[Self-contained HTML]
 ```
-~ A tilde-marker line renders a caption under the card, like this one.
 
-A sequence diagram:
+The theme recolours structural diagrams (flowchart, sequence, state, class, ER)
+to its palette and adapts author `classDef` colours to dark mode, keeps
+categorical diagrams (pie, gantt) on their own hues, and leaves any other family
+on a plain card --- all following the reader's colour scheme.
 
-```mermaid
-sequenceDiagram
-  participant U as User
-  participant C as CLI
-  participant R as Renderer
-  U->>C: mdtohtml notes.md --theme report
-  C->>R: convert(markdown)
-  R-->>C: HTML document
-  C-->>U: notes.html
+^ Footer
+## Document footer
+
+A `::: footer` container ends the page; a list inside it gets accent chevron
+bullets, and the body is ordinary Markdown:
+
+```markdown
+::: footer
+Generated by **mdtohtml** with the `report` theme.
+
+- converter.py
+- themes/report.css
+:::
 ```
-
-A state diagram:
-
-```mermaid
-stateDiagram-v2
-  [*] --> Draft
-  Draft --> Review
-  Review --> Shipped
-  Review --> Draft
-  Shipped --> [*]
-```
-
-A class diagram. Its `title:` here is a single label, so the header bar carries
-one left-aligned title with no meta note:
-
-```mermaid
----
-title: Converter domain model
----
-classDiagram
-  class Converter {
-    +convert(md, theme) str
-    -preprocess(md) str
-  }
-  class Theme {
-    +name str
-    +css str
-  }
-  class Renderer {
-    +render(ast) str
-  }
-  Converter --> Theme : loads
-  Converter --> Renderer : delegates
-```
-
-An entity-relationship diagram:
-
-```mermaid
-erDiagram
-  DOCUMENT ||--o{ SECTION : contains
-  SECTION ||--o{ BLOCK : contains
-  BLOCK }o--|| THEME : "styled by"
-```
-
-A flowchart with author `classDef` colours. Each colour keeps its hue in light
-mode and is retuned to a dark-friendly tone with an AA-legible label in dark mode:
-
-```mermaid
-graph LR
-  A[Request] --> B{Approved?}
-  B -->|yes| C[Shipped]
-  B -->|no| D[Blocked]
-  classDef ok fill:#dcecda,stroke:#2e7d32,color:#1b5e20
-  classDef no fill:#f8d7da,stroke:#c62828,color:#7f1d1d
-  class C ok
-  class D no
-```
-~ classDef node colours adapt to the colour scheme, hue preserved.
-
-### Categorical diagrams
-
-Categorical diagrams (pie, gantt) keep their own hues and darken in dark mode.
-
-A pie chart:
-
-```mermaid
-pie title Test coverage by area
-  "Converter" : 45
-  "Rendering" : 30
-  "CLI" : 15
-  "Themes" : 10
-```
-
-A gantt chart:
-
-```mermaid
-gantt
-  title Release plan
-  dateFormat YYYY-MM-DD
-  section Build
-  Math + mermaid   :done, a1, 2026-09-01, 7d
-  Report theme     :done, a2, after a1, 5d
-  section Ship
-  Tag release      :a3, after a2, 3d
-```
-
-### Other diagram types
-
-Any other mermaid family (here a user journey) is neither recoloured nor
-darkened --- it keeps mermaid's own palette on a light card that stays legible in
-dark mode:
-
-```mermaid
-journey
-  title Author's path to a report
-  section Draft
-    Write markdown: 5: Author
-    Add diagrams: 3: Author
-  section Publish
-    Run mdtohtml: 5: Author
-    Share the HTML: 4: Author, Reader
-```
-
-^ Notes
-## Notes
-
-Everything above renders to one portable HTML file with no network calls. Math
-and diagrams carry no runtime engine; the only JavaScript is the optional
-table-of-contents sidebar (its scroll-spy and collapse toggle).
 
 ::: footer
-Generated by **mdtohtml** with the `report` theme. A `::: footer` container ends
-the page; a list inside it gets chevron bullets. Source components:
+Generated by **mdtohtml** with the `report` theme.
 
 - converter.py
 - themes/report.css
