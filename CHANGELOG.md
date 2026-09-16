@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Images embedded as a `data:` URI now survive sanitisation, so a picture can
+  travel inside the single self-contained HTML file with no separate asset or
+  network fetch. Scoped for safety: a `data:` URI is allowed only as an image
+  source (`<img src>`) and only for image MIME types (`data:image/...`); every
+  other `data:` payload -- notably `data:text/html` on a link -- is still
+  dropped. `examples/report.md` gains an Images section demonstrating a
+  self-contained figure.
 - A leading `---` front-matter block drives a report hero: an `eyebrow` kicker,
   the `title` (which also sets the document `<title>`), a `lede`, and up to a
   handful of `slot:` cards (`label | heading | body`), rendered as a header band

@@ -424,6 +424,27 @@ to its palette and adapts author `classDef` colours to dark mode, keeps
 categorical diagrams (pie, gantt) on their own hues, and leaves any other family
 on a plain card --- all following the reader's colour scheme.
 
+^ Images
+## Images
+
+An image embedded as a `data:` URI travels inside the HTML, so the page stays
+self-contained --- no separate asset, no network fetch. Only image MIME types
+are allowed, and only as an image (never as a link target). Wrap it in a figure
+with a caption using the caption marker:
+
+```markdown
+![Lines converted per stage](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cD...)
+
+~ Throughput sampled across one conversion run.
+```
+
+![Lines converted per stage](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MjAiIGhlaWdodD0iMTgwIiB2aWV3Qm94PSIwIDAgNTIwIDE4MCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJCYXIgY2hhcnQgb2YgbGluZXMgY29udmVydGVkIHBlciBzdGFnZSI+CjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSI1MjAiIGhlaWdodD0iMTgwIiByeD0iMTIiIGZpbGw9IiNmN2YyZTkiLz4KPHRleHQgeD0iMjQiIHk9IjM0IiBmb250LWZhbWlseT0iR2VvcmdpYSwgc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM0YTNiMjQiPkxpbmVzIGNvbnZlcnRlZCBwZXIgc3RhZ2U8L3RleHQ+CjxnIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EsIEFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNmI1YTNlIj4KPHJlY3QgeD0iMTQwIiB5PSI1NCIgd2lkdGg9IjMwMCIgaGVpZ2h0PSIxOCIgcng9IjQiIGZpbGw9IiNiMDZhMmMiLz48dGV4dCB4PSIyNCIgeT0iNjciPlBhcnNlPC90ZXh0Pjx0ZXh0IHg9IjQ0OCIgeT0iNjciIGZpbGw9IiM0YTNiMjQiPjMwMDwvdGV4dD4KPHJlY3QgeD0iMTQwIiB5PSI4NiIgd2lkdGg9IjIyMCIgaGVpZ2h0PSIxOCIgcng9IjQiIGZpbGw9IiM1YzdhNTIiLz48dGV4dCB4PSIyNCIgeT0iOTkiPlJlbmRlcjwvdGV4dD48dGV4dCB4PSIzNjgiIHk9Ijk5IiBmaWxsPSIjNGEzYjI0Ij4yMjA8L3RleHQ+CjxyZWN0IHg9IjE0MCIgeT0iMTE4IiB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE4IiByeD0iNCIgZmlsbD0iIzNmNmI4NiIvPjx0ZXh0IHg9IjI0IiB5PSIxMzEiPlNhbml0aXNlPC90ZXh0Pjx0ZXh0IHg9IjMwOCIgeT0iMTMxIiBmaWxsPSIjNGEzYjI0Ij4xNjA8L3RleHQ+CjxyZWN0IHg9IjE0MCIgeT0iMTUwIiB3aWR0aD0iOTAiIGhlaWdodD0iMTgiIHJ4PSI0IiBmaWxsPSIjN2E1YTg2Ii8+PHRleHQgeD0iMjQiIHk9IjE2MyI+QXNzZW1ibGU8L3RleHQ+PHRleHQgeD0iMjM4IiB5PSIxNjMiIGZpbGw9IiM0YTNiMjQiPjkwPC90ZXh0Pgo8L2c+Cjwvc3ZnPg==)
+
+~ Throughput sampled across one conversion run.
+
+Remote images work too (`![alt](https://…)`), but a `data:` URI is what keeps
+the single-file output truly portable.
+
 ^ Footer
 ## Document footer
 

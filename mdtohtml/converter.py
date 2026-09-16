@@ -914,6 +914,45 @@ _KATEX_STYLE_PROPS = {
     "width",
 }
 
+# URL schemes nh3 lets through. nh3's scheme gate is global (it cannot vary by
+# tag), so ``data:`` is added to the default allowlist here and then narrowed
+# by :func:`_nh3_attribute_filter` to image sources only -- otherwise a
+# ``data:text/html`` payload on a link would pass too.
+_NH3_URL_SCHEMES = set(nh3.ALLOWED_URL_SCHEMES) | {"data"}
+
+
+def _strip_url_noise(value: str) -> str:
+    """Normalise a URL for scheme classification.
+
+    Browsers ignore ASCII whitespace and C0 control characters when resolving a
+    URL's scheme (``da\\tta:`` reads as ``data:``, leading spaces are dropped),
+    and nh3 classifies schemes the same way. Removing every character up to and
+    including ``0x20`` and lowercasing yields a form at least as aggressive, so
+    an obfuscated scheme cannot slip past the classification below.
+    """
+    return "".join(ch for ch in value if ord(ch) > 0x20).lower()
+
+
+def _nh3_attribute_filter(tag: str, attr: str, value: str) -> str | None:
+    """Permit a ``data:`` URI only as an image source, drop it everywhere else.
+
+    A ``data:`` URI keeps an embedded image self-contained (no network fetch),
+    but the same scheme on a link (``data:text/html`` → script execution on
+    navigation) is an XSS vector. nh3 has already validated the scheme against
+    :data:`_NH3_URL_SCHEMES` before this runs, so the only ``data:`` values seen
+    here are ones a browser would honour; this narrows them to ``img src`` with
+    an ``image/`` MIME type. Every other attribute passes unchanged.
+
+    An SVG loaded through ``<img>`` runs with scripting disabled, so a
+    ``data:image/svg+xml`` source cannot execute its own markup.
+    """
+    normalised = _strip_url_noise(value)
+    if normalised.startswith("data:"):
+        if tag == "img" and attr == "src" and normalised.startswith("data:image/"):
+            return value
+        return None
+    return value
+
 
 def md_to_html(
     md_text: str,
@@ -1000,6 +1039,8 @@ def md_to_html(
             html,
             tags=_NH3_ALLOWED_TAGS,
             attributes=_NH3_ALLOWED_ATTRIBUTES,
+            url_schemes=_NH3_URL_SCHEMES,
+            attribute_filter=_nh3_attribute_filter,
             filter_style_properties=_KATEX_STYLE_PROPS,
         )
 
@@ -1319,6 +1360,8 @@ def _render_inline(text: str) -> str:
         rendered,
         tags=_NH3_ALLOWED_TAGS,
         attributes=_NH3_ALLOWED_ATTRIBUTES,
+        url_schemes=_NH3_URL_SCHEMES,
+        attribute_filter=_nh3_attribute_filter,
         filter_style_properties=_KATEX_STYLE_PROPS,
     )
 
