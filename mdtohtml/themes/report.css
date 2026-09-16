@@ -1358,8 +1358,14 @@ hr {
     text-decoration: none;
 }
 
+/* Top-level entries carry the section kicker string, so they wear the kicker's
+   own type: a muted mono uppercase label with the same tracking as ``.sec-label``. */
 #toc > ul > li > a {
-    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
 }
 
 #toc ul ul a {

@@ -566,6 +566,71 @@ class TestToc:
         headings = _extract_headings(body)
         assert headings == [(2, "api", "API Reference")]
 
+    def test_extract_headings_uses_section_kicker_as_label(self) -> None:
+        body = '<p class="sec-label">Legend</p><h2 id="status">Status legend</h2>'
+        assert _extract_headings(body) == [(2, "status", "Legend")]
+
+    def test_extract_headings_without_kicker_keeps_heading_text(self) -> None:
+        body = '<h2 id="plain">Plain heading</h2>'
+        assert _extract_headings(body) == [(2, "plain", "Plain heading")]
+
+    def test_extract_headings_kicker_does_not_leak_to_next_heading(self) -> None:
+        body = (
+            '<p class="sec-label">First</p><h2 id="a">Alpha</h2>'
+            '<h2 id="b">Beta</h2>'
+        )
+        assert _extract_headings(body) == [(2, "a", "First"), (2, "b", "Beta")]
+
+    def test_extract_headings_orphan_kicker_is_dropped(self) -> None:
+        # A ``.sec-label`` not directly above a heading (a block intervenes) does
+        # not label the next heading.
+        body = '<p class="sec-label">Orphan</p><p>Body</p><h2 id="a">Alpha</h2>'
+        assert _extract_headings(body) == [(2, "a", "Alpha")]
+
+    def test_extract_headings_kicker_consumed_by_out_of_range_heading(self) -> None:
+        # A kicker above a heading beyond ``max_depth`` is consumed by it, not
+        # carried onto the next in-range heading.
+        body = (
+            '<p class="sec-label">Deep</p><h4 id="d">Deep heading</h4>'
+            '<h2 id="a">Alpha</h2>'
+        )
+        assert _extract_headings(body, max_depth=3) == [(2, "a", "Alpha")]
+
+    def test_toc_label_uses_kicker_from_markdown_end_to_end(self) -> None:
+        body = md_to_html("^ Overview\n## Introduction and scope\n\nText.")
+        nav = _build_toc_nav(body)
+        assert '<a href="#introduction-and-scope">Overview</a>' in nav
+        assert "Introduction and scope" not in nav
+
+    def test_extract_headings_class_match_is_token_not_substring(self) -> None:
+        # Only a whitespace-separated ``sec-label`` token counts -- a substring
+        # (``sec-labelx``) or an unrelated token must not be read as a kicker.
+        for cls in ("sec-labelx", "sec-labelled", "not-sec-label"):
+            body = f'<p class="{cls}">Nope</p><h2 id="a">Alpha</h2>'
+            assert _extract_headings(body) == [(2, "a", "Alpha")]
+
+    def test_extract_headings_class_match_finds_token_among_many(self) -> None:
+        for cls in ("foo sec-label", "sec-label foo"):
+            body = f'<p class="{cls}">Kick</p><h2 id="a">Alpha</h2>'
+            assert _extract_headings(body) == [(2, "a", "Kick")]
+
+    def test_extract_headings_empty_heading_with_kicker_still_lists(self) -> None:
+        # An empty ``## `` heading carries a real id; with a kicker it lists on
+        # the kicker rather than being dropped for empty own-text.
+        body = md_to_html("^ Label\n## \n\nBody.")
+        headings = _extract_headings(body)
+        assert len(headings) == 1
+        assert headings[0][2] == "Label"
+
+    def test_extract_headings_empty_kicker_falls_back_to_heading_text(self) -> None:
+        body = '<p class="sec-label">   </p><h2 id="a">Alpha</h2>'
+        assert _extract_headings(body) == [(2, "a", "Alpha")]
+
+    def test_toc_label_escapes_special_characters(self) -> None:
+        body = md_to_html("^ A & B <x>\n## Section\n\nText.")
+        nav = _build_toc_nav(body)
+        assert "A &amp; B &lt;x&gt;" in nav
+
     # ── TOC nav building ──
 
     def test_build_toc_nav_basic(self) -> None:
