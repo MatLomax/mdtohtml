@@ -212,7 +212,7 @@ h1 + p {
 .sec-label {
     font-family: var(--mono);
     font-size: 12px;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--ink-faint);
     /* padding-top (not margin) so the section gap does not collapse into the
@@ -238,8 +238,7 @@ h1 + p {
    restores normal flow to the following content. */
 .caption {
     font-family: var(--mono);
-    font-size: 12px;
-    line-height: 1.5;
+    font-size: 13px;
     color: var(--ink-faint);
     margin: -0.4em 0 1.4em;
 }
