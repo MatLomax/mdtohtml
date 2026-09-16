@@ -1,7 +1,7 @@
 ---
 eyebrow: mdtohtml · component reference
 title: Release Readiness Report
-lede: A single self-contained page exercising every component `mdtohtml` supports -- typography, callouts, tables, task lists, footnotes, wikilinks, syntax highlighting, coloured chips, pre-rendered math, pre-rendered mermaid diagrams, section kickers, captions, titled code and diagram cards, and a document footer. This line is the report **lede**.
+lede: A single self-contained page exercising every component `mdtohtml` supports --- typography, callouts, tables, task lists, footnotes, wikilinks, syntax highlighting, coloured chips, pre-rendered math, pre-rendered mermaid diagrams, section kickers, captions, titled code and diagram cards, and a document footer. This line is the report **lede**.
 slot: Shipped | Server-side rendering | Math and diagrams are pre-rendered at convert time and carry no runtime engine; the only script is the optional table-of-contents sidebar.
 slot: Themed | Report theme | Warm, AA-accessible, and auto light/dark via `prefers-color-scheme`.
 slot: Portable | Single file | Every asset inlines into one self-contained HTML document.
@@ -14,7 +14,7 @@ Status legend: :green[shipped] :blue[in review] :amber[at risk]
 :red[blocked] :slate[deferred] :purple[spike] :teal[docs] :pink[design]
 :lime[qa] :gold[release] :gray[backlog]
 
-A section can lead with a `^ Label` kicker -- the small mono line above this and
+A section can lead with a `^ Label` kicker --- the small mono line above this and
 the other headings on this page.
 
 ^ Formatting
@@ -49,15 +49,15 @@ custom text [[Architecture Overview|the design doc]], and one to a heading
 > lists.
 
 > [!warning] Warning
-> The warning callout uses an amber accent -- distinct from the red danger
-> family -- with an AA-safe title in both light and dark colour schemes.
+> The warning callout uses an amber accent --- distinct from the red danger
+> family --- with an AA-safe title in both light and dark colour schemes.
 
 > [!danger] Danger
 > The danger and failure family keeps the red accent, for destructive or
 > irreversible actions.
 
 > [!keypoint]
-> A `keypoint` callout is a plain elevated card with no title -- for the one
+> A `keypoint` callout is a plain elevated card with no title --- for the one
 > takeaway of a section. It can hold a pull quote:
 >
 > > Every other callout tints and labels itself; the keypoint stays quiet.

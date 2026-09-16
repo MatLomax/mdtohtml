@@ -745,6 +745,9 @@ _MD_EXTENSIONS = [
     "pymdownx.betterem",
     "pymdownx.tilde",
     "pymdownx.mark",
+    # Typographic dashes only: ``--`` -> en-dash, ``---`` -> em-dash. Quotes and
+    # ellipses are left as typed (configured off below).
+    "smarty",
     "pymdownx.tasklist",
     "pymdownx.highlight",
     "pymdownx.superfences",
@@ -774,6 +777,12 @@ _MD_EXTENSION_CONFIGS = {
     },
     "toc": {
         "marker": "",
+    },
+    "smarty": {
+        # Dashes only -- leave quotes/ellipses as the author typed them.
+        "smart_quotes": False,
+        "smart_ellipses": False,
+        "smart_angled_quotes": False,
     },
 }
 
@@ -1219,7 +1228,19 @@ btn.setAttribute('aria-label',collapsed?'Expand table of contents':'Collapse tab
 # heading/body). Kept to the inline-formatting subset -- emphasis, strike,
 # highlight -- so a hero line reads like body prose; block constructs are not
 # expected in a one-line field. Core markdown (links, inline code) is always on.
-_INLINE_MD_EXTENSIONS = ["pymdownx.betterem", "pymdownx.tilde", "pymdownx.mark"]
+_INLINE_MD_EXTENSIONS = [
+    "pymdownx.betterem",
+    "pymdownx.tilde",
+    "pymdownx.mark",
+    "smarty",
+]
+_INLINE_MD_CONFIGS = {
+    "smarty": {
+        "smart_quotes": False,
+        "smart_ellipses": False,
+        "smart_angled_quotes": False,
+    },
+}
 
 
 def _render_inline(text: str) -> str:
@@ -1231,7 +1252,11 @@ def _render_inline(text: str) -> str:
     any hostile markup is neutralised. It is therefore safe to splice into the
     trusted hero structure built by :func:`_render_hero`.
     """
-    md = markdown.Markdown(extensions=_INLINE_MD_EXTENSIONS, output_format="html")
+    md = markdown.Markdown(
+        extensions=_INLINE_MD_EXTENSIONS,
+        extension_configs=_INLINE_MD_CONFIGS,
+        output_format="html",
+    )
     rendered = md.convert(text).strip()
     if (
         rendered.startswith("<p>")

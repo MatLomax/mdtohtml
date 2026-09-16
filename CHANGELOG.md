@@ -85,6 +85,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `:red{no}`) renders the text bold in the palette colour with no pill
   (`<span class="ptext key">`) -- the plain-text companion to the `:key[label]`
   chip. A key outside the palette, or the syntax inside code, is left literal.
+- Typographic dashes: `--` becomes an en-dash and `---` becomes an em-dash in
+  prose and hero fields. Straight quotes and `...` are left as typed, and code is
+  never touched.
 
 ### Changed
 

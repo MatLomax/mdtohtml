@@ -939,6 +939,33 @@ class TestPreprocessChips:
             assert result == f'<span class="pchip {key}">label</span>'
 
 
+class TestSmartDashes:
+    """``--`` -> en-dash, ``---`` -> em-dash; quotes/ellipses left as typed."""
+
+    def test_double_dash_becomes_en_dash(self) -> None:
+        assert "–" in md_to_html("spans 1 -- 2")
+
+    def test_triple_dash_becomes_em_dash(self) -> None:
+        assert "—" in md_to_html("a break --- here")
+
+    def test_dashes_in_code_untouched(self) -> None:
+        out = md_to_html("`a -- b`")
+        assert "a -- b" in out
+        assert "–" not in out and "—" not in out
+
+    def test_quotes_and_ellipses_not_smartened(self) -> None:
+        out = md_to_html('say "hi" and wait ...')
+        assert '"hi"' in out
+        assert "..." in out
+        assert "“" not in out and "…" not in out
+
+    def test_hero_field_gets_smart_dashes(self) -> None:
+        out = convert(
+            "---\ntitle: T\nlede: a --- b\n---\n\n# Doc\n\nBody.\n", "report"
+        )
+        assert "—" in out
+
+
 class TestMdToHtmlChips:
     def test_chip_renders_to_span_in_html(self) -> None:
         html = md_to_html(":blue[North]")
