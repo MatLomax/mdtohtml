@@ -765,6 +765,7 @@ const toggleBtn={addEventListener(){},setAttribute(){}};
 const toc={scrollHeight:10,clientHeight:100,scrollTop:0,querySelectorAll:()=>anchors,querySelector:()=>toggleBtn,classList:{toggle(){return true;}},getBoundingClientRect(){return {top:0,bottom:100};}};
 let sh=null;
 global.requestAnimationFrame=fn=>fn();
+global.getComputedStyle=()=>({scrollMarginTop:'0px'});
 global.document={getElementById(id){if(id==='toc')return toc;const m=/^h(\d)$/.exec(id);return m?headings[+m[1]]:null;},documentElement:{get scrollHeight(){return scrollHeight;}}};
 global.window={get innerHeight(){return innerHeight;},get scrollY(){return scrollY;},addEventListener(ev,fn){if(ev==='scroll')sh=fn;},requestAnimationFrame:global.requestAnimationFrame};
 const run=()=>sh&&sh();
@@ -787,6 +788,68 @@ process.stdout.write(JSON.stringify(out));
         assert result["mid"] == 1         # advances as headings pass the line
         assert result["bottom"] == 2      # last entry pinned at page bottom
         assert result["shortFits"] == 0   # short page: first, not last
+
+    def test_toc_scrollspy_activation_line_follows_scroll_margin(
+        self, tmp_path: Path,
+    ) -> None:
+        """A heading's activation line is its own ``scroll-margin-top`` plus the
+        20px buffer, so a kicker-led section (scroll-margin 48) lights up once it
+        parks at its landing line -- not only after its heading reaches the top.
+
+        Also covers a realistic kicker/plain/kicker interleave (margins
+        ``[48,0,48]``) at layout-plausible offsets: because a scroll-margin-48
+        heading is only ever a kicker heading -- and its ``.sec-label`` adds 48px
+        of padding above it -- a kicker heading always sits well clear of the
+        heading above, so the widened trigger line never lets a lower kicker steal
+        ``active`` from a higher plain heading.
+        """
+        import json
+        import shutil
+        import subprocess
+
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip("node not available")
+
+        (tmp_path / "toc.js").write_text(TOC_JS, encoding="utf-8")
+        harness = r"""
+const fs=require('fs');
+const js=fs.readFileSync(process.argv[2],'utf8');
+function link(){const o={cls:new Set()};o.classList={add(c){o.cls.add(c);},remove(c){o.cls.delete(c);}};o.setAttribute=()=>{};o.removeAttribute=()=>{};return o;}
+let headTops=[-300,-100,60];
+const margins=[48,0,48];
+const links=[link(),link(),link()];
+const headings=[0,1,2].map(i=>({_i:i,getBoundingClientRect(){return {top:headTops[i]};}}));
+const anchors=links.map((l,i)=>({getAttribute(){return '#h'+i;},classList:l.classList,setAttribute(){},removeAttribute(){},getBoundingClientRect(){return {top:0,bottom:10};}}));
+const toc={scrollHeight:10,clientHeight:100,scrollTop:0,querySelectorAll:()=>anchors,querySelector:()=>({addEventListener(){},setAttribute(){}}),classList:{toggle(){return true;}},getBoundingClientRect(){return {top:0,bottom:100};}};
+let sh=null;
+global.requestAnimationFrame=fn=>fn();
+global.getComputedStyle=el=>({scrollMarginTop:margins[el._i]+'px'});
+global.document={getElementById(id){if(id==='toc')return toc;const m=/^h(\d)$/.exec(id);return m?headings[+m[1]]:null;},documentElement:{scrollHeight:2000}};
+global.window={innerHeight:500,scrollY:0,addEventListener(ev,fn){if(ev==='scroll')sh=fn;},requestAnimationFrame:global.requestAnimationFrame};
+const run=()=>sh&&sh();
+const active=()=>{for(let i=0;i<links.length;i++)if(links[i].cls.has('active'))return i;return -1;};
+const out={};
+// h2 (kicker, scroll-margin 48) at top 60 is within its 48+20 line -> reached.
+// (Old top<=20 logic would leave h1 lit here, so this pins the new behaviour.)
+headTops=[-300,-100,60];eval(js);out.kickerReached=active();
+// h2 at top 90 has not reached its 68px line; the plain h1 at top 10 is current
+// and the lower kicker does not steal it.
+headTops=[-300,10,90];run();out.plainNotStolen=active();
+// A kicker heading is the first reached: h0 at top 40 (<=68) lights on its own.
+headTops=[40,200,400];run();out.firstKicker=active();
+process.stdout.write(JSON.stringify(out));
+"""
+        (tmp_path / "harness.js").write_text(harness, encoding="utf-8")
+        proc = subprocess.run(
+            [node, str(tmp_path / "harness.js"), str(tmp_path / "toc.js")],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, proc.stderr
+        result = json.loads(proc.stdout)
+        assert result["kickerReached"] == 2   # active at top 60 (<= 48+20)
+        assert result["plainNotStolen"] == 1  # plain h1 kept; lower kicker at 90 > 68
+        assert result["firstKicker"] == 0     # kicker h0 lights at top 40 (<= 68)
 
     def test_toc_js_toggle_collapses_and_expands(self, tmp_path: Path) -> None:
         """Run the real toggle IIFE (via node): clicking flips the 'collapsed'

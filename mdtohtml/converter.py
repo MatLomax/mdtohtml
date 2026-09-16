@@ -1211,7 +1211,11 @@ if(!toc)return;
 var links=Array.from(toc.querySelectorAll('a[href^=\"#\"]'));
 var entries=links.map(function(a){
 var id=decodeURIComponent(a.getAttribute('href').slice(1));
-return{link:a,heading:document.getElementById(id)};
+var h=document.getElementById(id);
+// Cache each heading's scroll-margin-top: the line a TOC jump parks it on
+// (e.g. above a section kicker), which is also where the scrollspy should
+// consider it reached.
+return{link:a,heading:h,margin:h?parseFloat(getComputedStyle(h).scrollMarginTop)||0:0};
 }).filter(function(e){return e.heading;});
 if(!entries.length)return;
 var raf;
@@ -1229,7 +1233,10 @@ active=entries[entries.length-1].link;
 // getBoundingClientRect is viewport-relative, so the active heading is found
 // correctly whatever offsetParent a theme's layout gives the headings.
 for(i=0;i<entries.length;i++){
-if(entries[i].heading.getBoundingClientRect().top<=20)active=entries[i].link;
+// A heading is reached once its top hits its own landing line (its
+// scroll-margin-top) plus a small buffer, so a kicker-led section lights up
+// the moment it parks at the top rather than only after its heading does.
+if(entries[i].heading.getBoundingClientRect().top<=entries[i].margin+20)active=entries[i].link;
 }
 // Before the first heading crosses the line, light the first entry.
 if(!active)active=entries[0].link;

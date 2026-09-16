@@ -100,6 +100,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A table-of-contents link now lands above its section's kicker rather than
+  scrolling it off the top: a kicker-preceded heading carries a `scroll-margin-top`,
+  and the scrollspy marks a section active once it reaches that same landing line
+  (its own `scroll-margin-top` plus the trigger buffer), so a kicker-led section
+  lights up as it parks at the top.
+- The `report` theme's table-of-contents entries are semibold with a little more
+  vertical padding, and the "Table of Contents" header matches the entry type size.
 - The table-of-contents sidebar labels each entry with its section kicker (the
   `^ Label` line above the heading) when the section has one, falling back to the
   heading text otherwise; the link still targets the heading. Under the `report`

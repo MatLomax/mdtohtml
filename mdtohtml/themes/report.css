@@ -233,6 +233,10 @@ h1 + p {
 .sec-label + h6 {
     margin-top: 0;
     padding-top: 0;
+    /* A TOC link targets the heading, but the kicker sits just above it; this
+       margin makes the jump land above the kicker so its label leads the view
+       instead of being scrolled off the top. */
+    scroll-margin-top: 3rem;
 }
 
 /* @section: caption
@@ -1294,7 +1298,7 @@ hr {
 
 .toc-title {
     font-family: var(--mono);
-    font-size: 0.6875rem;
+    font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.14em;
@@ -1352,7 +1356,7 @@ hr {
 
 #toc a {
     display: block;
-    padding: 0.32rem 1.25rem;
+    padding: 0.42rem 1.25rem;
     border-left: 2px solid transparent;
     color: var(--ink-soft);
     text-decoration: none;
@@ -1363,6 +1367,7 @@ hr {
 #toc > ul > li > a {
     font-family: var(--mono);
     font-size: 12px;
+    font-weight: 600;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--ink-faint);
