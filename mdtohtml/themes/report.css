@@ -42,6 +42,10 @@
 html {
     font-size: 16px;
     line-height: 1.6;
+    /* Declare both schemes so the UA paints scrollbars (and any form controls)
+       in the scheme that matches ``prefers-color-scheme`` -- dark scrollbars on a
+       dark page rather than light ones. */
+    color-scheme: light dark;
 }
 
 * {
@@ -867,14 +871,12 @@ pre code {
     margin: 20px 0;
     padding: 16px 14px;
     overflow-x: auto;
-    color-scheme: light;
 }
 
 .mermaid-diagram.mermaid-structural,
 .mermaid-diagram.mermaid-categorical {
     background: var(--panel);
     border-color: var(--line);
-    color-scheme: normal;
 }
 
 .mermaid-diagram svg {
@@ -1270,7 +1272,11 @@ hr {
     font-size: 0.8125rem;
     line-height: 1.5;
     z-index: 100;
+    /* A thin scrollbar pinned to the theme tokens: a faint thumb on a transparent
+       track that darkens with the page rather than staying a light UA default on
+       the dark rail. */
     scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
 }
 
 /* The header band carries the title and the collapse toggle, plus the divider

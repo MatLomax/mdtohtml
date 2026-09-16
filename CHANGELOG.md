@@ -97,6 +97,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The `report` theme declares `color-scheme: light dark`, so native scrollbars
+  (and any UA controls) follow the reader's `prefers-color-scheme` instead of
+  staying light on a dark page. The table-of-contents rail's thin scrollbar is
+  pinned to the theme tokens so its thumb darkens with the page, and pre-rendered
+  mermaid diagrams no longer hold their scrollbar to light in dark mode.
 - The `report` theme's monospace stack adds `JetBrains Mono` (between `SF Mono`
   and `Menlo`), so inline code, code blocks, and card headers pick it up when the
   reader has it installed.
