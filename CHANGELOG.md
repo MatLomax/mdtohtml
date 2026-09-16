@@ -17,14 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `mermaid` fenced code blocks are pre-rendered to inline SVG at convert time,
   so diagrams need no runtime JavaScript and no network call. A diagram that
   fails to parse degrades to its source shown as a code block with a note.
-- Bundled example report sources under `examples/`: `report.md` exercises every
-  supported component under the `report` theme (the front-matter hero, callouts,
-  tables with chips, task lists, math, titled mermaid diagrams, section kickers,
-  captions, a banded `hl_lines` code block, a titled code sheet, a keyed table, a
-  keypoint card, and a document footer), and `phantom-transit-stock.md` is a
-  realistic report including `classDef`-coloured diagrams. Each renders to a
-  self-contained HTML sibling with `mdtohtml`; the generated `.html` files are
-  regenerated from the sources rather than committed.
+- Bundled example report sources under `examples/`: `report.md` is an exhaustive
+  component reference under the `report` theme, exercising every combination that
+  inlines into one self-contained file -- the front-matter hero, section kickers
+  with a kicker-less fallback, headings `h2` through `h6` with `h2`/`h3` TOC
+  nesting, all eleven chip colours and all eleven bare coloured-text keys, all
+  fifteen callout families (with per-family inline-code tints), a keypoint card,
+  unordered/ordered/task lists, plain and keyed tables, plain/single-title/split-title
+  code cards with a banded `hl_lines` block, inline and display math, mermaid
+  diagrams in all three theme treatments (structural: flowchart, sequence, state,
+  class, ER, `classDef`-coloured; categorical: pie, gantt; and other: a base-card
+  journey) with split and single-label title bars, captions, and a document footer
+  -- and `phantom-transit-stock.md` is a realistic report including
+  `classDef`-coloured diagrams. Each renders to a self-contained HTML sibling with
+  `mdtohtml`; the generated `.html` files are regenerated from the sources rather
+  than committed.
 - The `report` theme's table-of-contents sidebar has a collapse/expand toggle:
   the button in the sidebar header collapses it to a slim rail (the content
   column reclaims the width) and expands it again. The state is not persisted, so
