@@ -80,7 +80,7 @@ The same omission was present in three further paths, and in the post-confirm re
 
 The pallet lands with `TransactionType = 1` (Bulk) and `PalletDestination = '16RV'` — a *bulk* transfer addressed to a *picking* location. Every receiving list rules it out.
 
-```{.csharp title="The receiving filters | JJO.DataObjects · POTransferTbl.FromPacking and LoadPalletsForRacking" hl_lines="2 8"}
+```{.csharp title="The receiving filters | JJO.DataObjects · POTransferTbl.FromPacking and LoadPalletsForRacking" hl_lines="2 9"}
 case ST_Stock.AreaCode.RailwaySt:
     "(PalletStatus = 2 OR PalletStatus = 1) and (SubString(PickingLocation,3,4) in ('AC','RV','RX','RR') and TransactionType = 0)"
 case ST_Stock.AreaCode.OliveMill:
@@ -88,7 +88,8 @@ case ST_Stock.AreaCode.OliveMill:
 case ST_Stock.AreaCode.SprayShop:
     "PalletStatus = 2 and ((PalletDestination = 'FMB' and TransactionType = 1) or (PickingLocation = '20FM' and TransactionType = 0))"
 
-    "TransactionType = 1 and PalletDestination = 'RSR' and PalletStatus = 2"   // LoadPalletsForRacking
+// LoadPalletsForRacking
+    "TransactionType = 1 and PalletDestination = 'RSR' and PalletStatus = 2"
 ```
 ~ Railway St matches the location but demands TransactionType = 0; racking takes TransactionType = 1 but only for destination RSR.
 
