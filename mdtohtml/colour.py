@@ -81,6 +81,29 @@ ROLE_FILL = "fill"  # a node/shape surface -> becomes a dark tile
 ROLE_STROKE = "stroke"  # a border/edge -> stays a visible mid-light line
 ROLE_TEXT = "text"  # a label ink -> becomes a light, legible tone
 
+# In dark mode a label must read a touch brighter than its node's border. HSL
+# lightness alone cannot promise that -- a saturated hue can out-luminance a paler
+# one at higher lightness -- so the retune floors a label's *luminance* and caps a
+# border's, with a gap between the two. Because luminance rises monotonically with
+# lightness at a fixed hue/saturation, these self-bounds hold for any hue pairing
+# with no cross-colour coupling: text luminance >= floor > cap >= stroke luminance.
+_TEXT_MIN_LUMINANCE = 0.60
+_STROKE_MAX_LUMINANCE = 0.55
+
+
+def _lightness_for_min_luminance(h: float, s: float, l: float, target: float) -> float:
+    """Raise lightness until the colour's luminance reaches *target* (hue/sat fixed)."""
+    while l < 1.0 and relative_luminance(_hsl_to_rgb(h, s, l)) < target:
+        l = min(1.0, l + 0.02)
+    return l
+
+
+def _lightness_for_max_luminance(h: float, s: float, l: float, target: float) -> float:
+    """Lower lightness until the colour's luminance is at most *target* (hue/sat fixed)."""
+    while l > 0.0 and relative_luminance(_hsl_to_rgb(h, s, l)) > target:
+        l = max(0.0, l - 0.02)
+    return l
+
 
 def dark_variant(value: str, role: str) -> str:
     """Return a dark-mode-friendly variant of hex *value* for its *role*.
@@ -89,22 +112,29 @@ def dark_variant(value: str, role: str) -> str:
     stays green and a red one stays red. A ``fill`` (surface) is pulled down into
     a dark tile band, a ``text`` (label ink) is lifted into a light band so it
     reads on that tile, and a ``stroke`` (border) lands in a visible mid-light
-    band. A non-hex value (``none``/``transparent``/``url(...)``) is returned
-    unchanged so hollow shapes stay hollow. WCAG pairing is applied separately by
-    the caller once each classDef's fill/text variants are known.
+    band. Text and stroke are additionally luminance-bounded (ink floored, border
+    capped, with a gap between) so a label always reads brighter than its border
+    regardless of how the author's ink and border hues relate. A non-hex value
+    (``none``/``transparent``/``url(...)``) is returned unchanged so hollow shapes
+    stay hollow. WCAG pairing is applied separately by the caller once each
+    classDef's fill/text variants are known.
     """
     rgb = parse_hex(value)
     if rgb is None:
         return value
     h, s, l = _rgb_to_hsl(rgb)
     if role == ROLE_TEXT:
-        # Label ink: ensure it is light, keeping some hue so it reads as coloured.
-        new_l = max(l, 0.82)
+        # Label ink: light and bright, then floored in luminance so it out-shines
+        # the border band below whatever the hue.
+        new_l = max(l, 0.86)
         new_s = _clamp(s, 0.0, 0.85)
+        new_l = _lightness_for_min_luminance(h, new_s, new_l, _TEXT_MIN_LUMINANCE)
     elif role == ROLE_STROKE:
-        # Border: a visible mid-light line whichever way the original leaned.
-        new_l = _clamp(l if l >= 0.5 else 1.0 - l * 0.5, 0.52, 0.78)
+        # Border: a visible but restrained mid-tone line, capped in luminance so it
+        # stays dimmer than the label ink and the text keeps more presence.
+        new_l = _clamp(l if l >= 0.5 else 1.0 - l * 0.5, 0.45, 0.68)
         new_s = _clamp(s, 0.12, 0.9)
+        new_l = _lightness_for_max_luminance(h, new_s, new_l, _STROKE_MAX_LUMINANCE)
     else:  # ROLE_FILL
         # Surface: a dark tile, lighter originals sitting a touch darker so the
         # set keeps some spread; saturation eased so tiles are tinted, not neon.
