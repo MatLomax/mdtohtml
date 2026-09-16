@@ -1482,6 +1482,27 @@ class TestReportTheme:
         # Dark mode note title is amber too, not the old blue.
         assert ".admonition.note .admonition-title { color: #fbbf24; }" in css
 
+    def test_keypoint_callout_becomes_admonition(self) -> None:
+        out = md_to_html("> [!keypoint]\n> The one takeaway.")
+        assert 'class="admonition keypoint"' in out
+
+    def test_report_css_styles_keypoint_card(self) -> None:
+        css = load_theme_css("report")
+        kp = re.search(r"\.admonition\.keypoint \{([^}]*)\}", css).group(1)
+        # An elevated white card with an accent-line border (not a tinted rule).
+        assert "border: 1px solid var(--accent-line)" in kp
+        assert "background: var(--panel)" in kp
+        # No title on a keypoint.
+        assert re.search(
+            r"\.admonition\.keypoint \.admonition-title \{[^}]*display: none", css
+        )
+        # Its pull-quote is an amber-barred block.
+        bq = re.search(
+            r"\.admonition\.keypoint blockquote \{([^}]*)\}", css
+        ).group(1)
+        assert "border-left: 3px solid var(--accent)" in bq
+        assert "background: var(--accent-soft)" in bq
+
     def test_report_css_centres_the_task_checkmark(self) -> None:
         css = load_theme_css("report")
         # A ticked box's checkmark is centre-anchored, not pinned to a fixed

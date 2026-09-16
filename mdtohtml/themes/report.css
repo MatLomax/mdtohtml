@@ -526,6 +526,37 @@ blockquote p {
     margin-bottom: 0;
 }
 
+/* A ``> [!keypoint]`` callout is a plain elevated card -- no coloured rule, no
+   title -- holding a lead paragraph and an optional amber-barred pull quote, for
+   the one takeaway of a section. */
+.admonition.keypoint {
+    border: 1px solid var(--accent-line);
+    border-radius: 12px;
+    padding: 24px 26px;
+    margin: 24px 0;
+    background: var(--panel);
+}
+
+.admonition.keypoint .admonition-title {
+    display: none;
+}
+
+/* With the title hidden, drop the lead paragraph's top margin so it sits flush
+   against the card's padding (the ~24px top, matching the reference). */
+.admonition.keypoint .admonition-title + p {
+    margin-top: 0;
+}
+
+.admonition.keypoint blockquote {
+    margin: 14px 0 0;
+    padding: 14px 18px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 8px 8px 0;
+    font-size: 15.5px;
+    line-height: 1.55;
+}
+
 .admonition.note { border-left-color: #c07a33; background: rgba(192, 122, 51, 0.12); }
 .admonition.note .admonition-title { color: #8a5210; }
 .admonition.abstract { border-left-color: #3f8079; background: rgba(63, 128, 121, 0.1); }

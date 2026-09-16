@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `examples/report.html`) exercising every supported component under the `report`
   theme: the front-matter hero, callouts, tables with chips, task lists, math,
   titled mermaid diagrams, section kickers, captions, a banded `hl_lines` code
-  block, a titled code sheet, a keyed table, and a document footer.
+  block, a titled code sheet, a keyed table, a keypoint card, and a document
+  footer.
 - The `report` theme's table-of-contents sidebar has a collapse/expand toggle:
   the button in the sidebar header collapses it to a slim rail (the content
   column reclaims the width) and expands it again. The state is not persisted, so
@@ -76,6 +77,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `report` theme a faint, top-ruled provenance region, with any list inside it
   getting accent `›` chevron bullets. The footer body is ordinary Markdown (emphasis,
   links, lists all work). Documents without the container are unaffected.
+- A `> [!keypoint]` callout renders as a plain elevated card -- no coloured rule
+  and no title -- for the one takeaway of a section, holding a lead paragraph and
+  an optional amber-barred pull quote (a `> >` blockquote inside it). Under the
+  `report` theme it is a white panel with an accent-line border and shadow.
 
 ### Changed
 

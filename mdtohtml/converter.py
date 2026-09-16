@@ -76,6 +76,7 @@ _CALLOUT_TYPES = {
     "bug",
     "example",
     "quote",
+    "keypoint",
 }
 
 # Matches the opening line of an Obsidian callout: > [!type] Optional Title

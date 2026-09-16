@@ -54,6 +54,12 @@ custom text [[Architecture Overview|the design doc]], and one to a heading
 > The danger and failure family keeps the red accent, for destructive or
 > irreversible actions.
 
+> [!keypoint]
+> A `keypoint` callout is a plain elevated card with no title -- for the one
+> takeaway of a section. It can hold a pull quote:
+>
+> > Every other callout tints and labels itself; the keypoint stays quiet.
+
 ^ Lists
 ## Lists and tasks
 
