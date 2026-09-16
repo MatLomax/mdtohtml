@@ -219,7 +219,6 @@ For every one of the 24 codes the stranded pallet quantities sum to **exactly** 
 >
 > > 14 of the 24 codes are currently negative on picking stock; after the correction, none are.
 
-^ Data correction — for sign-off
 ## Per pallet
 
 All 48 rows are `PalletStatus = 2`, packed by `ligpack1`. Pallet destination equals the picking location on every row, which is the rewrite the grid-load path performs for an `NBL` item.
@@ -276,7 +275,6 @@ All 48 rows are `PalletStatus = 2`, packed by `ligpack1`. Pallet destination equ
 | CCTRWEGDG | REP TALL WALL END GLOSS DAKOTA GREY | 18MMGDG | P371348 | AK5663 | 36 | 2023-12-17 | 16RV | NBL |
 | CCTRWETB | REPLACEMENT TALL WALL END TYROLEAN BLUE | 18MMTB | P371346 | AK5663 | 18 | 2023-12-17 | 16RV | NBL |
 
-^ Data correction — for sign-off
 ## What the correction does to each pallet
 
 The semantics already exist in the product: `PO_TransferPool`'s `FixDialog` is precisely this operation, one pallet at a time. It is the route used on 2025-04-08 to release CCOBLALA's P393083, which is why that item's transit count restarted from zero in June 2025.
