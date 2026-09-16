@@ -1379,17 +1379,20 @@ class TestReportThemeSectionKicker:
         assert m is not None
         assert "color: var(--ink-faint)" in m.group(1)
         assert "var(--accent)" not in m.group(1)
-        # It matches the hero eyebrow's size and font -- only the colour differs.
+        # It shares the hero eyebrow's size and font, but tracks a touch tighter
+        # and is muted -- matching the reference (eyebrow 0.18em accent kicker,
+        # section label 0.16em muted).
         eb = re.search(r"\n\.eyebrow \{([^}]*)\}", css)
         assert eb is not None
         for prop in (
             "font-size: 12px",
-            "letter-spacing: 0.18em",
             "font-family: var(--mono)",
             "text-transform: uppercase",
         ):
             assert prop in m.group(1)
             assert prop in eb.group(1)
+        assert "letter-spacing: 0.16em" in m.group(1)
+        assert "letter-spacing: 0.18em" in eb.group(1)
         # Neither declares an explicit weight -- both rely on the normal (400)
         # default, so re-adding font-weight: 700 to the kicker would diverge.
         assert "font-weight" not in m.group(1)

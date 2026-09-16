@@ -103,6 +103,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `report` theme's card-header labels (diagram and code-sheet bars) now use a
   600 weight and a warm ink (`#4a4335` label, `#9a8f76` meta) in light mode,
   switching to the theme's light-on-dark tokens in dark mode.
+- The `report` theme's section kicker (`.sec-label`) tracks a touch tighter
+  (`0.16em`) than the hero eyebrow (`0.18em`), and the diagram/code caption
+  (`.caption`) is 13px with the body line height, matching the reference.
 - The `report` theme's layout is tuned to the report scaffold: a wider content
   column, larger (non-collapsing) spacing above section headings, and code and
   diagram card headers at the reference's type size whose left-hand title keeps
