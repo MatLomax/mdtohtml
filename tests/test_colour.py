@@ -79,6 +79,49 @@ class TestDarkVariant:
             _hue(value), abs=0.01
         )
 
+    def test_text_reads_brighter_than_its_border(self) -> None:
+        # The label ink must sit brighter than the node's border so the text
+        # carries more presence than the outline in dark mode.
+        text = colour.parse_hex(colour.dark_variant("#1b5e20", colour.ROLE_TEXT))
+        stroke = colour.parse_hex(colour.dark_variant("#2e7d32", colour.ROLE_STROKE))
+        assert colour.relative_luminance(text) > colour.relative_luminance(stroke)
+
+    def test_text_brighter_than_border_when_both_start_from_one_colour(self) -> None:
+        # Even when the classDef gives text and stroke the same author colour,
+        # the retuned ink must out-brighten the retuned border.
+        base = "#3d7a3d"
+        text = colour.parse_hex(colour.dark_variant(base, colour.ROLE_TEXT))
+        stroke = colour.parse_hex(colour.dark_variant(base, colour.ROLE_STROKE))
+        assert colour.relative_luminance(text) > colour.relative_luminance(stroke)
+
+    def test_text_brighter_than_border_for_a_low_luminance_ink_hue(self) -> None:
+        # A classDef may give ink and border unrelated hues: a deep-blue label
+        # (low luminance even when light) against a yellow-green border (high
+        # luminance even when mid-dark). HSL lightness would invert here; the
+        # luminance bounds must still keep the ink brighter than the border.
+        text = colour.parse_hex(colour.dark_variant("#000033", colour.ROLE_TEXT))
+        stroke = colour.parse_hex(colour.dark_variant("#333300", colour.ROLE_STROKE))
+        assert colour.relative_luminance(text) > colour.relative_luminance(stroke)
+
+    def test_text_brighter_than_border_across_every_hue_pairing(self) -> None:
+        # The guarantee is universal: for any independent ink/border author hues,
+        # the retuned label out-luminates the retuned border.
+        samples = [
+            f"#{r:02x}{g:02x}{b:02x}"
+            for r in (0, 128, 255)
+            for g in (0, 128, 255)
+            for b in (0, 128, 255)
+        ]
+        for ink in samples:
+            text_lum = colour.relative_luminance(
+                colour.parse_hex(colour.dark_variant(ink, colour.ROLE_TEXT))
+            )
+            for border in samples:
+                stroke_lum = colour.relative_luminance(
+                    colour.parse_hex(colour.dark_variant(border, colour.ROLE_STROKE))
+                )
+                assert text_lum > stroke_lum, (ink, border)
+
     def test_non_hex_is_unchanged(self) -> None:
         assert colour.dark_variant("none", colour.ROLE_FILL) == "none"
         assert colour.dark_variant("transparent", colour.ROLE_FILL) == "transparent"

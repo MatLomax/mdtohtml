@@ -41,9 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Author `classDef` colours on a structural diagram now adapt to dark mode under
   the `report` theme. Each colour keeps its hue while its lightness and
   saturation move to a dark-friendly tone -- pale fills become dark tiles, dark
-  labels become light ink, borders become visible mid-tones -- and every label is
-  WCAG AA-legible against its tile. Light mode keeps the author's exact colours,
-  and a diagram with no `classDef` colours is left untouched.
+  labels become light ink, borders become restrained mid-tones kept dimmer than
+  the label ink so the text reads a touch brighter than its node's outline -- and
+  every label is WCAG AA-legible against its tile. Light mode keeps the author's
+  exact colours, and a diagram with no `classDef` colours is left untouched.
 - Coloured chips gain a dark-mode palette under the `report` theme, each key
   drawn from its matching callout colour, so pills stay legible and on-theme
   when the reader's `prefers-color-scheme` is dark.
