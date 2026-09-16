@@ -97,6 +97,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The `report` theme's monospace stack adds `JetBrains Mono` (between `SF Mono`
+  and `Menlo`), so inline code, code blocks, and card headers pick it up when the
+  reader has it installed.
+- The `report` theme's card-header labels (diagram and code-sheet bars) now use a
+  600 weight and a warm ink (`#4a4335` label, `#9a8f76` meta) in light mode,
+  switching to the theme's light-on-dark tokens in dark mode.
 - The `report` theme's layout is tuned to the report scaffold: a wider content
   column, larger (non-collapsing) spacing above section headings, and code and
   diagram card headers at the reference's type size whose left-hand title keeps
