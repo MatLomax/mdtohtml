@@ -689,6 +689,26 @@ def _style_code_headers(html: str) -> str:
     return _FILENAME_RE.sub(_replace, html)
 
 
+# Pygments wraps each highlighted line in ``<span class="hll">…code…\n</span>``
+# with the line-terminating newline INSIDE the span. When the report theme makes
+# ``.hll`` an ``inline-block`` (so the band covers a horizontally-scrolled wide
+# line), two consecutive highlighted lines become adjacent inline-blocks with no
+# line break between them and pile onto one row. Moving the newline OUT to after
+# ``</span>`` restores a real break between bands while keeping the inline-block.
+_HLL_NEWLINE_RE = re.compile(r'(<span class="hll">.*?)\n</span>', re.S)
+
+
+def _fix_hll_line_breaks(html: str) -> str:
+    """Move each ``.hll`` line's terminating newline outside its span.
+
+    So consecutive highlighted lines each render as their own full-width band on
+    their own line instead of collapsing onto one row. A highlighted line's inner
+    token spans never carry a ``\\n`` immediately before their ``</span>``, so the
+    match only ever lands on the ``hll`` wrapper's own close.
+    """
+    return _HLL_NEWLINE_RE.sub(r"\1</span>\n", html)
+
+
 # ── Core Functions ──
 
 
@@ -942,6 +962,10 @@ def md_to_html(
         # Step 3b: Turn a code block's ``title=`` filename into a titled card
         # header (``.sheet-head``).
         html = _style_code_headers(html)
+
+        # Step 3c: Move each highlighted line's terminating newline outside its
+        # ``.hll`` span so consecutive banded lines break onto separate rows.
+        html = _fix_hll_line_breaks(html)
 
         # Step 4: Sanitise with nh3
         html = nh3.clean(

@@ -112,6 +112,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A code block highlighting more than one line (`hl_lines="2 3"`) now bands each
+  flagged line on its own row instead of collapsing the consecutive lines onto a
+  single row.
 - Footnotes under the `report` theme now render their intended styling -- a
   faint top-ruled separator (in place of the default horizontal rule) and
   smaller muted text -- rather than falling back to the browser's plain footnote

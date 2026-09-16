@@ -1481,6 +1481,21 @@ class TestCodeLineHighlight:
         html = md_to_html("```python\nx = 1\n```")
         assert "hll" not in html
 
+    def test_adjacent_hl_lines_break_onto_separate_rows(self) -> None:
+        html = md_to_html('```python\na = 1\nb = 2\nc = 3\n```'.replace(
+            "```python", '```python hl_lines="2 3"'
+        ))
+        assert html.count('class="hll"') == 2
+        # Each band's terminating newline is moved OUTSIDE its span, so two
+        # consecutive bands are separated by a real line break (not glued
+        # together, which piled them onto one row). This pattern -- one hll span
+        # closing, a newline, then the next hll span -- only holds with the fix.
+        assert re.search(
+            r'<span class="hll">.*?</span>\n<span class="hll">', html, re.S
+        )
+        assert '</span><span class="hll">' not in html
+        assert '\n</span>' not in html
+
     def test_report_css_bands_the_highlighted_line(self) -> None:
         css = load_theme_css("report")
         assert ".highlight .hll" in css
