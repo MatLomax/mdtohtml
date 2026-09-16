@@ -1,6 +1,6 @@
 ---
 eyebrow: mdtohtml · component reference
-title: Release Readiness Report
+title: A Field Guide to mdtohtml
 lede: A single self-contained page exercising every component that inlines into one file, each shown with the Markdown source that produces it --- the front-matter hero, typography and headings `h2` through `h6`, coloured chips and text, section kickers and captions, all fifteen callout families, plain and keyed tables, task lists, math, titled code and diagram cards, and a document footer. This line is the report **lede**.
 slot: Shipped | Server-side rendering | Math and diagrams are pre-rendered at convert time and carry no runtime engine; the only script is the optional table-of-contents sidebar.
 slot: Themed | Report theme | Warm, AA-accessible, and auto light/dark via `prefers-color-scheme`.
@@ -18,7 +18,7 @@ markdown. This block produced the header at the top of the page:
 ```markdown
 ---
 eyebrow: mdtohtml · component reference
-title: Release Readiness Report
+title: A Field Guide to mdtohtml
 lede: A one-paragraph intro that may carry **inline markdown**.
 slot: Shipped | Server-side rendering | Zero runtime JavaScript.
 slot: Themed | Report theme | Auto light/dark, AA-safe.

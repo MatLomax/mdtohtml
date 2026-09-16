@@ -125,7 +125,7 @@ report hero — the header band the `report` theme renders above the content:
 ```markdown
 ---
 eyebrow: mdtohtml · component reference
-title: Release Readiness Report
+title: A Field Guide to mdtohtml
 lede: A one-paragraph intro that may contain **inline markdown**.
 slot: Shipped | Server-side rendering | Zero runtime JavaScript.
 slot: Themed | Report theme | Auto light/dark, AA-safe.
