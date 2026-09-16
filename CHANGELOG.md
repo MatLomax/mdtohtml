@@ -100,6 +100,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The table-of-contents sidebar labels each entry with its section kicker (the
+  `^ Label` line above the heading) when the section has one, falling back to the
+  heading text otherwise; the link still targets the heading. Under the `report`
+  theme these top-level entries take the kicker's own type -- a muted mono
+  uppercase label -- so the sidebar mirrors the in-page section kickers.
 - The `report` theme declares `color-scheme: light dark`, so native scrollbars
   (and any UA controls) follow the reader's `prefers-color-scheme` instead of
   staying light on a dark page. The table-of-contents rail's thin scrollbar is

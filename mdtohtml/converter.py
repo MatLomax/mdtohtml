@@ -1049,43 +1049,84 @@ def list_themes(themes_dir: Path | None = None) -> list[str]:
 
 
 class _HeadingExtractor(HTMLParser):
-    """Extract headings with ``id`` attributes from an HTML body fragment."""
+    """Extract headings (with ``id``) and their section kicker from an HTML body.
+
+    Each heading's TOC label is the section kicker -- the ``<p class="sec-label">``
+    a ``^ Label`` line sets directly above the heading -- falling back to the
+    heading's own text when the section carries no kicker. A kicker's ``<p>`` sits
+    immediately before its heading, so a captured kicker is carried to the next
+    heading and dropped if any other block appears in between.
+    """
+
+    _HEADINGS = ("h1", "h2", "h3", "h4", "h5", "h6")
 
     def __init__(self, max_depth: int = 3) -> None:
         super().__init__()
-        self.headings: list[tuple[int, str, str]] = []  # (level, id, text)
+        self.headings: list[tuple[int, str, str]] = []  # (level, id, label)
         self._current: tuple[int, str] | None = None
+        self._current_kicker: str | None = None
         self._text_parts: list[str] = []
         self.max_depth = max_depth
+        self._in_kicker = False
+        self._kicker_parts: list[str] = []
+        self._pending_kicker: str | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
+        attr_dict = dict(attrs)
+        if tag == "p" and "sec-label" in (attr_dict.get("class") or "").split():
+            # Capture the kicker text to carry forward to the next heading.
+            self._in_kicker = True
+            self._kicker_parts = []
+            return
+        if tag in self._HEADINGS:
+            # The heading consumes any pending kicker regardless of its depth or
+            # whether it has an id, so a kicker never leaks past the heading it
+            # labels onto a later one.
+            kicker = self._pending_kicker
+            self._pending_kicker = None
             level = int(tag[1])
             if level <= self.max_depth:
-                attr_dict = dict(attrs)
                 heading_id = attr_dict.get("id")
                 if heading_id:
                     self._current = (level, heading_id)
+                    self._current_kicker = kicker
                     self._text_parts = []
+            return
+        if not self._in_kicker:
+            # Any other block breaks the kicker's adjacency to a heading.
+            self._pending_kicker = None
 
     def handle_endtag(self, tag: str) -> None:
-        if self._current and tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
+        if self._in_kicker and tag == "p":
+            self._in_kicker = False
+            self._pending_kicker = "".join(self._kicker_parts).strip() or None
+            return
+        if self._current and tag in self._HEADINGS:
             level, heading_id = self._current
             text = "".join(self._text_parts).strip()
-            if text:
-                self.headings.append((level, heading_id, text))
+            # The kicker is a valid label in its own right, so a heading with a
+            # kicker still lists even when its own text is empty.
+            label = self._current_kicker or text
+            if label:
+                self.headings.append((level, heading_id, label))
             self._current = None
+            self._current_kicker = None
             self._text_parts = []
 
     def handle_data(self, data: str) -> None:
-        if self._current is not None:
+        if self._in_kicker:
+            self._kicker_parts.append(data)
+        elif self._current is not None:
             self._text_parts.append(data)
 
 
 def _extract_headings(
     html_body: str, max_depth: int = 3,
 ) -> list[tuple[int, str, str]]:
-    """Return ``[(level, id, text), ...]`` for headings in *html_body*."""
+    """Return ``[(level, id, label), ...]`` for headings in *html_body*.
+
+    ``label`` is the heading's section kicker when it has one, else its own text.
+    """
     parser = _HeadingExtractor(max_depth)
     parser.feed(html_body)
     return parser.headings
