@@ -492,6 +492,30 @@ class TestMermaid:
         assert "<svg" not in html
         assert "<code" in html
 
+    _CLASSDEF_DOC = (
+        "# Doc\n\n"
+        "```mermaid\n"
+        "graph TD\n"
+        "  A[Start] --> B[Good]\n"
+        "  classDef good fill:#dcecda,stroke:#2e7d32,color:#1b5e20\n"
+        "  class B good\n"
+        "```\n"
+    )
+
+    def test_report_theme_retunes_classdef_for_dark(self) -> None:
+        # The auto light/dark report theme routes classDef colours through
+        # per-diagram variables with a dark-mode media query.
+        out = convert(self._CLASSDEF_DOC, "report")
+        assert "fill:var(--m" in out
+        assert "@media (prefers-color-scheme:dark)" in out
+
+    def test_default_theme_leaves_classdef_literal(self) -> None:
+        # A single-scheme theme must not retune -- dark tiles on a light page
+        # would be wrong -- so the author colour stays a literal hex.
+        out = convert(self._CLASSDEF_DOC, "default")
+        assert "fill:var(--m" not in out
+        assert "#dcecda" in out
+
 
 # ═══════════════════════════════════════════════════════════════════════
 # Table of Contents

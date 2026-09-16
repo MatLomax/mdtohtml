@@ -29,6 +29,8 @@ import threading
 
 import mermaidx
 
+from . import colour
+
 # ── Mermaid Configuration ──
 
 # Forwarded to mermaid.js ``initialize``. ``strict`` security sanitises every
@@ -184,6 +186,179 @@ def _soften_structural_colours(svg: str) -> str:
     )
 
 
+# The SVG root id (``gd1``, ``gd2``, ...) mermaid stamps per diagram. It is
+# unique within a page, so custom-property definitions scoped to it never leak
+# between diagrams.
+_SVG_ID_RE = re.compile(r'<svg[^>]*\bid="([^"]+)"')
+
+# A ``classDef`` shape rule in mermaid's ``<style>`` block, e.g.
+# ``#gd1 .good rect{fill:#dcecda!important;stroke:#2e7d32!important;color:#1b5e20!important;}``.
+# The ``!important`` marks it as an author classDef (mermaid's own defaults are
+# not ``!important``), so this signature isolates author colours from the base
+# palette. Five identical rules (rect/polygon/ellipse/circle/path) exist per
+# class; they dedupe naturally into the same colour sets.
+_CLASSDEF_SHAPE_TMPL = (
+    r"#{id}\s+\.[\w-]+\s+(?:rect|polygon|ellipse|circle|path)\s*\{{([^}}]*)\}}"
+)
+_CLASSDEF_TSPAN_TMPL = r"#{id}\s+\.[\w-]+\s+tspan\s*\{{([^}}]*)\}}"
+_DECL_FILL_RE = re.compile(r"(?<![\w-])fill\s*:\s*(#[0-9A-Fa-f]{3,8})")
+_DECL_STROKE_RE = re.compile(r"(?<![\w-])stroke\s*:\s*(#[0-9A-Fa-f]{3,8})")
+_DECL_COLOR_RE = re.compile(r"(?<![\w-])color\s*:\s*(#[0-9A-Fa-f]{3,8})")
+
+# Minimum WCAG contrast a retuned label must keep against its retuned node fill.
+_LABEL_CONTRAST_AA = 4.5
+
+
+# Node shapes a classDef fill/stroke lands on, and label elements a classDef
+# text colour lands on. The element decides an ambiguous ``fill`` declaration's
+# role: on a shape it is a surface (fill), on a label it is ink (text).
+_SHAPE_ELEMS = ("rect", "polygon", "ellipse", "circle", "path")
+_LABEL_ELEMS = ("text", "tspan", "g")
+_INLINE_STYLE_TMPL = r'(<(?:{elems})\b[^>]*?\bstyle=")([^"]*)(")'
+
+
+def _retune_classdef_for_dark(svg: str) -> str:
+    """Give a diagram's ``classDef`` colours a dark-mode variant, hue preserved.
+
+    An author's ``classDef fill:#dcecda`` bakes into the SVG as an inline
+    ``!important`` colour that no theme stylesheet can override, so on a dark page
+    a pale ``fill`` keeps its light tone while the theme lightens the label -- pale
+    text on a pale tile, unreadable. This routes each classDef colour through a
+    per-diagram CSS custom property whose light value is the author's own colour
+    (so light mode is byte-for-byte unchanged) and whose ``@media (prefers-color-
+    scheme: dark)`` value is a retuned tone: the *same hue*, with lightness and
+    saturation moved into a dark-friendly band -- fills become dark tiles, labels
+    light ink, borders visible mid-tones -- then WCAG-checked so each label clears
+    AA against its tile.
+
+    Variables are keyed by ``(role, colour)``, not colour alone, so a single
+    colour used as both a fill and a label (or as a fill in one class and ink in
+    another) gets an independent tile and ink variant -- otherwise they would
+    collapse to one value and the contrast guarantee would break. Replacement is
+    scoped to classDef ``<style>`` rules and node/label elements (never a blanket
+    value swap), so a colour an author happens to share with a mermaid marker is
+    left alone. The properties are scoped to the SVG's unique root id, so diagrams
+    never bleed into one another. A diagram with no classDef colours is returned
+    unchanged.
+    """
+    id_match = _SVG_ID_RE.search(svg)
+    style_match = re.search(r"<style>(.*?)</style>", svg, re.S)
+    if not id_match or not style_match:
+        return svg
+    svg_id = id_match.group(1)
+    style = style_match.group(1)
+
+    shape_re = re.compile(_CLASSDEF_SHAPE_TMPL.format(id=re.escape(svg_id)))
+    tspan_re = re.compile(_CLASSDEF_TSPAN_TMPL.format(id=re.escape(svg_id)))
+
+    # (role, hex) keys collected from the authoritative classDef <style> rules.
+    keys: set[tuple[str, str]] = set()
+    # (fill_hex, text_hex) pairs per classDef, for the WCAG label-on-tile check.
+    pairs: list[tuple[str, str]] = []
+    seen_pairs: set[tuple[str, str]] = set()
+
+    for match in shape_re.finditer(style):
+        body = match.group(1)
+        if "!important" not in body:  # skip mermaid's own (non-classDef) defaults
+            continue
+        f = _DECL_FILL_RE.search(body)
+        s = _DECL_STROKE_RE.search(body)
+        t = _DECL_COLOR_RE.search(body)
+        fh = f.group(1).lower() if f else None
+        sh = s.group(1).lower() if s else None
+        th = t.group(1).lower() if t else None
+        if fh:
+            keys.add((colour.ROLE_FILL, fh))
+        if sh:
+            keys.add((colour.ROLE_STROKE, sh))
+        if th:
+            keys.add((colour.ROLE_TEXT, th))
+        if fh and th and (fh, th) not in seen_pairs:
+            seen_pairs.add((fh, th))
+            pairs.append((fh, th))
+    for match in tspan_re.finditer(style):
+        body = match.group(1)
+        if "!important" not in body:
+            continue
+        t = _DECL_FILL_RE.search(body)
+        if t:
+            keys.add((colour.ROLE_TEXT, t.group(1).lower()))
+
+    if not keys:
+        return svg
+
+    dark = {key: colour.dark_variant(key[1], key[0]) for key in keys}
+
+    # Keep each label legible on its own tile; if the same ink pairs with several
+    # tiles, take the lightest lift any of them demands.
+    for fill_hex, text_hex in pairs:
+        fk = (colour.ROLE_FILL, fill_hex)
+        tk = (colour.ROLE_TEXT, text_hex)
+        if fk not in dark or tk not in dark:
+            continue
+        lifted = colour.lighten_to_contrast(dark[tk], dark[fk], _LABEL_CONTRAST_AA)
+        cur = colour.parse_hex(dark[tk])
+        new = colour.parse_hex(lifted)
+        if new and cur and colour.relative_luminance(new) > colour.relative_luminance(cur):
+            dark[tk] = lifted
+
+    ordered = sorted(keys)
+    varname = {key: f"--m{i}" for i, key in enumerate(ordered)}
+    # Light value is the author's own colour (light mode unchanged); dark value is
+    # the retuned tone. A colour shared across roles yields several variables that
+    # all carry the same light value but diverge in dark.
+    light_defs = "".join(f"{varname[k]}:{k[1]};" for k in ordered)
+    dark_defs = "".join(f"{varname[k]}:{dark[k]};" for k in ordered)
+    inject = (
+        f"#{svg_id}{{{light_defs}}}"
+        f"@media (prefers-color-scheme:dark){{#{svg_id}{{{dark_defs}}}}}"
+    )
+
+    def _sub_decls(body: str, fill_role: str) -> str:
+        """Rewrite classDef colour declarations in *body* to ``var()`` refs.
+
+        ``color``/``stroke`` carry their role in the property name; an ambiguous
+        ``fill`` takes *fill_role* (a surface on a shape, ink on a label).
+        """
+
+        def repl(role: str, prop: str, m: "re.Match[str]") -> str:
+            key = (role, m.group(1).lower())
+            return f"{prop}:var({varname[key]})" if key in varname else m.group(0)
+
+        body = _DECL_COLOR_RE.sub(lambda m: repl(colour.ROLE_TEXT, "color", m), body)
+        body = _DECL_STROKE_RE.sub(
+            lambda m: repl(colour.ROLE_STROKE, "stroke", m), body
+        )
+        body = _DECL_FILL_RE.sub(lambda m: repl(fill_role, "fill", m), body)
+        return body
+
+    def _rewrite_rule(fill_role: str, m: "re.Match[str]") -> str:
+        rule_body = m.group(1)
+        if "!important" not in rule_body:  # only author classDef rules
+            return m.group(0)
+        return m.group(0).replace(rule_body, _sub_decls(rule_body, fill_role), 1)
+
+    # Rewrite the <style> block's classDef rules (shape fills, tspan ink).
+    style = shape_re.sub(lambda m: _rewrite_rule(colour.ROLE_FILL, m), style)
+    style = tspan_re.sub(lambda m: _rewrite_rule(colour.ROLE_TEXT, m), style)
+    svg = svg.replace(
+        style_match.group(0), "<style>" + inject + style + "</style>", 1
+    )
+
+    # Rewrite inline styles, letting the element decide an ambiguous ``fill``.
+    shape_inline = re.compile(_INLINE_STYLE_TMPL.format(elems="|".join(_SHAPE_ELEMS)))
+    label_inline = re.compile(_INLINE_STYLE_TMPL.format(elems="|".join(_LABEL_ELEMS)))
+    svg = shape_inline.sub(
+        lambda m: m.group(1) + _sub_decls(m.group(2), colour.ROLE_FILL) + m.group(3),
+        svg,
+    )
+    svg = label_inline.sub(
+        lambda m: m.group(1) + _sub_decls(m.group(2), colour.ROLE_TEXT) + m.group(3),
+        svg,
+    )
+    return svg
+
+
 def _diagram_class(svg: str) -> str:
     """Return the extra wrapper class for *svg*, keyed on its diagram family.
 
@@ -202,7 +377,7 @@ def _diagram_class(svg: str) -> str:
     return ""
 
 
-def render_mermaid(source: str, *, dark: bool = False) -> str:
+def render_mermaid(source: str, *, dark: bool = False, adaptive: bool = False) -> str:
     """Render Mermaid *source* to embed-ready inline HTML.
 
     On success returns the inline ``<svg>...</svg>`` produced by mermaid.js (with
@@ -217,6 +392,11 @@ def render_mermaid(source: str, *, dark: bool = False) -> str:
         dark: When true, render with the ``dark`` mermaid theme (light text for a
             dark page); otherwise the ``default`` theme. Both yield a transparent
             canvas.
+        adaptive: When true, the target theme adapts to ``prefers-color-scheme``,
+            so a structural diagram's author ``classDef`` colours are given a
+            hue-preserving dark-mode variant (see
+            :func:`_retune_classdef_for_dark`). Only meaningful for a
+            light-rendered, auto light/dark theme (the ``report`` theme).
 
     Returns:
         A trusted HTML fragment ready to embed in the document body.
@@ -242,6 +422,10 @@ def render_mermaid(source: str, *, dark: bool = False) -> str:
     # The wrapper is trusted, post-``nh3.clean`` output alongside the SVG it holds.
     cls = _diagram_class(svg)
     if cls == " mermaid-structural":
+        # On an auto light/dark theme, give author classDef colours a dark-mode
+        # variant before softening so the retune reads the ``!important`` markers.
+        if adaptive:
+            svg = _retune_classdef_for_dark(svg)
         # Let the theme's recolour reach mermaid's id-scoped ``!important`` markers.
         svg = _soften_structural_colours(svg)
     header = _header_html(title) if title else ""
@@ -291,14 +475,17 @@ def _ctx() -> threading.local:
     return _state
 
 
-def begin_conversion(*, dark: bool) -> None:
+def begin_conversion(*, dark: bool, adaptive: bool = False) -> None:
     """Start a fresh Mermaid rendering context for one document conversion.
 
-    Resets the placeholder registry, records the *dark* flag for the formatter,
-    and generates a per-conversion nonce so placeholder ids are unique to this
-    conversion. Called once by the converter before markdown conversion runs.
+    Resets the placeholder registry, records the *dark* and *adaptive* flags for
+    the formatter, and generates a per-conversion nonce so placeholder ids are
+    unique to this conversion. ``adaptive`` is set for an auto light/dark theme
+    (the ``report`` theme), enabling the classDef dark-mode retune. Called once by
+    the converter before markdown conversion runs.
     """
     _state.dark = dark
+    _state.adaptive = adaptive
     _state.registry = {}
     _state.nonce = secrets.token_hex(8)
     _state.counter = 0
@@ -308,6 +495,7 @@ def begin_conversion(*, dark: bool) -> None:
 def end_conversion() -> None:
     """Clear the current thread's Mermaid context after a conversion completes."""
     _state.dark = False
+    _state.adaptive = False
     _state.registry = {}
     _state.nonce = ""
     _state.counter = 0
@@ -347,7 +535,9 @@ def format_mermaid_fence(
     ctx = _ctx()
     placeholder_id = _PLACEHOLDER_ID.format(nonce=ctx.nonce, index=ctx.counter)
     ctx.counter += 1
-    ctx.registry[placeholder_id] = render_mermaid(source, dark=ctx.dark)
+    ctx.registry[placeholder_id] = render_mermaid(
+        source, dark=ctx.dark, adaptive=getattr(ctx, "adaptive", False)
+    )
     return _placeholder_html(placeholder_id)
 
 

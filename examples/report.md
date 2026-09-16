@@ -181,6 +181,21 @@ stateDiagram-v2
   Shipped --> [*]
 ```
 
+A flowchart with author `classDef` colours. Each colour keeps its hue in light
+mode and is retuned to a dark-friendly tone with an AA-legible label in dark mode:
+
+```mermaid
+graph LR
+  A[Request] --> B{Approved?}
+  B -->|yes| C[Shipped]
+  B -->|no| D[Blocked]
+  classDef ok fill:#dcecda,stroke:#2e7d32,color:#1b5e20
+  classDef no fill:#f8d7da,stroke:#c62828,color:#7f1d1d
+  class C ok
+  class D no
+```
+~ classDef node colours adapt to the colour scheme, hue preserved.
+
 A pie chart (categorical - keeps its own hues, darker in dark mode):
 
 ```mermaid

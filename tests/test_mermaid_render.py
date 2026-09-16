@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import colorsys
 import re
 
 import markdown
 import nh3
 import pytest
 
+from mdtohtml import colour
 from mdtohtml.mermaid_render import (
     _extract_mermaid_title,
     _header_html,
@@ -185,6 +187,162 @@ class TestStructuralColourSoftening:
         # scoped to structural diagrams, so the categorical palette is preserved.
         gantt = "gantt\n title G\n section S\n T:a,2020-01-01,3d"
         assert _hex_colour_important(render_mermaid(gantt)) > 0
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# render_mermaid — dark-mode classDef retune
+# ═══════════════════════════════════════════════════════════════════════
+
+
+CLASSDEF = (
+    "graph TD\n"
+    "  A[Start] --> B[Good]\n"
+    "  A --> C[Bad]\n"
+    "  classDef good fill:#dcecda,stroke:#2e7d32,color:#1b5e20\n"
+    "  classDef bad fill:#f8d7da,stroke:#c62828,color:#7f1d1d\n"
+    "  class B good\n"
+    "  class C bad\n"
+)
+
+
+def _var_defs(block: str) -> dict[str, str]:
+    """Parse ``--mN:#hex;`` custom-property definitions out of a ``#id{...}`` block."""
+    return dict(re.findall(r"(--m\d+):(#[0-9a-fA-F]{6})", block))
+
+
+def _dark_defs(svg: str) -> dict[str, str]:
+    """Return the ``--mN -> #hex`` map from a diagram's dark-mode media block."""
+    svg_id = re.search(r'<svg id="([^"]+)"', svg).group(1)
+    _light, dark = re.findall(r"#" + re.escape(svg_id) + r"\{(--m0[^}]*)\}", svg)
+    return _var_defs(dark)
+
+
+class TestClassDefDarkRetune:
+    # An author's ``classDef fill:#dcecda`` bakes in as an inline ``!important``
+    # colour no stylesheet can override, so on a dark page a pale fill keeps its
+    # light tone. The adaptive retune routes each classDef colour through a
+    # per-diagram custom property: the author's colour in light, a hue-preserving
+    # dark-friendly, WCAG-checked tone under ``prefers-color-scheme: dark``.
+
+    def test_no_classdef_diagram_gets_no_injection(self) -> None:
+        # With no author classDef colours there is nothing to retune, so the
+        # adaptive pass adds no variables and no media query.
+        out = render_mermaid(FLOWCHART, adaptive=True)
+        assert "var(--m" not in out
+        assert "prefers-color-scheme" not in out
+
+    def test_non_adaptive_leaves_classdef_colours_literal(self) -> None:
+        out = render_mermaid(CLASSDEF, adaptive=False)
+        assert "#dcecda" in out  # author colour stays a literal hex
+        assert "var(--m" not in out
+        assert "prefers-color-scheme" not in out
+
+    def test_adaptive_routes_colours_through_variables(self) -> None:
+        out = render_mermaid(CLASSDEF, adaptive=True)
+        # Node fills and label inks now reference custom properties, not literals.
+        assert re.search(r'style="fill:var\(--m\d+\) !important', out)
+        assert "@media (prefers-color-scheme:dark)" in out
+
+    def test_light_values_are_the_author_colours(self) -> None:
+        out = render_mermaid(CLASSDEF, adaptive=True)
+        svg_id = re.search(r'<svg id="([^"]+)"', out).group(1)
+        light_block = re.search(
+            r"#" + re.escape(svg_id) + r"\{(--m0[^}]*)\}", out
+        ).group(1)
+        light = set(_var_defs(light_block).values())
+        # Every author colour appears verbatim as a light value (light unchanged).
+        for author in ("#dcecda", "#2e7d32", "#1b5e20", "#f8d7da", "#c62828", "#7f1d1d"):
+            assert author in light
+
+    def test_dark_labels_meet_aa_on_their_tiles(self) -> None:
+        out = render_mermaid(CLASSDEF, adaptive=True)
+        svg_id = re.search(r'<svg id="([^"]+)"', out).group(1)
+        light_block, dark_block = re.findall(
+            r"#" + re.escape(svg_id) + r"\{(--m0[^}]*)\}", out
+        )
+        light, dark = _var_defs(light_block), _var_defs(dark_block)
+        var_of = {hexval: name for name, hexval in light.items()}
+        for fill, text in (("#dcecda", "#1b5e20"), ("#f8d7da", "#7f1d1d")):
+            fill_dark = colour.parse_hex(dark[var_of[fill]])
+            text_dark = colour.parse_hex(dark[var_of[text]])
+            assert colour.contrast_ratio(text_dark, fill_dark) >= 4.5
+
+    def test_dark_fill_preserves_hue(self) -> None:
+        out = render_mermaid(CLASSDEF, adaptive=True)
+        svg_id = re.search(r'<svg id="([^"]+)"', out).group(1)
+        light_block, dark_block = re.findall(
+            r"#" + re.escape(svg_id) + r"\{(--m0[^}]*)\}", out
+        )
+        light, dark = _var_defs(light_block), _var_defs(dark_block)
+        for name, author in light.items():
+            lh = colorsys.rgb_to_hls(*(c / 255 for c in colour.parse_hex(author)))[0]
+            dh = colorsys.rgb_to_hls(*(c / 255 for c in colour.parse_hex(dark[name])))[0]
+            assert dh == pytest.approx(lh, abs=0.02)
+
+    def test_multiple_classdef_diagrams_scope_independently(self) -> None:
+        # Two classDef diagrams in one page get distinct root ids, so their
+        # per-diagram variable definitions never collide.
+        begin_conversion(dark=False, adaptive=True)
+        try:
+            format_mermaid_fence(CLASSDEF, "mermaid", "mermaid", {}, None)
+            format_mermaid_fence(CLASSDEF, "mermaid", "mermaid", {}, None)
+            from mdtohtml.mermaid_render import _ctx
+
+            svgs = list(_ctx().registry.values())
+        finally:
+            end_conversion()
+        ids = [re.search(r'<svg id="([^"]+)"', s).group(1) for s in svgs]
+        assert ids[0] != ids[1]
+        for i, svg in enumerate(svgs):
+            # Each diagram scopes its own definitions to its own id only.
+            assert svg.count("@media (prefers-color-scheme:dark)") == 1
+            assert ("#" + ids[1 - i] + "{--m") not in svg
+
+    def test_fill_equal_text_colour_still_meets_aa(self) -> None:
+        # A colour used as BOTH fill and text must get independent tile and ink
+        # variants -- one shared variable would put the label on an identically
+        # coloured tile (contrast 1.0), the exact failure this guards.
+        src = (
+            "graph TD\n  A[x] --> B[y]\n"
+            "  classDef mono fill:#808080,stroke:#808080,color:#808080\n"
+            "  class A mono\n  class B mono\n"
+        )
+        out = render_mermaid(src, adaptive=True)
+        dark = _dark_defs(out)
+        fill_var = re.search(r'<rect[^>]*style="fill:var\((--m\d+)\)', out).group(1)
+        text_var = re.search(r'<text[^>]*style="fill:var\((--m\d+)\)', out).group(1)
+        assert fill_var != text_var
+        assert (
+            colour.contrast_ratio(
+                colour.parse_hex(dark[fill_var]), colour.parse_hex(dark[text_var])
+            )
+            >= 4.5
+        )
+
+    def test_cross_role_colour_reuse_keeps_every_label_aa(self) -> None:
+        # One colour as ink in class A and fill in class B must not let A's WCAG
+        # lift corrupt B's tile: each class keeps an AA-legible label.
+        src = (
+            "graph TD\n  A[x] --> B[y]\n"
+            "  classDef good fill:#aaddaa,stroke:#2e7d32,color:#336633\n"
+            "  classDef bad fill:#336633,stroke:#c62828,color:#eeeeee\n"
+            "  class A good\n  class B bad\n"
+        )
+        out = render_mermaid(src, adaptive=True)
+        dark = _dark_defs(out)
+        nodes = re.findall(
+            r'<g class="node[^"]*\b(?:good|bad)\b[^"]*".*?</g>', out, re.S
+        )
+        assert len(nodes) == 2
+        for block in nodes:
+            fill_var = re.search(r'<rect[^>]*style="fill:var\((--m\d+)\)', block).group(1)
+            text_var = re.search(r'<text[^>]*style="fill:var\((--m\d+)\)', block).group(1)
+            assert (
+                colour.contrast_ratio(
+                    colour.parse_hex(dark[fill_var]), colour.parse_hex(dark[text_var])
+                )
+                >= 4.5
+            )
 
 
 # ═══════════════════════════════════════════════════════════════════════

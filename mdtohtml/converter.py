@@ -920,6 +920,7 @@ def md_to_html(
     *,
     ignore_callouts: set[str] | None = None,
     dark: bool = False,
+    adaptive: bool = False,
 ) -> str:
     """Convert markdown text to an HTML body fragment.
 
@@ -937,13 +938,15 @@ def md_to_html(
 
     When *ignore_callouts* is provided, callout blocks whose type is in the
     set are removed from the output entirely. When *dark* is true, mermaid
-    diagrams render with the dark theme.
+    diagrams render with the dark theme. When *adaptive* is true, the theme
+    adapts to ``prefers-color-scheme`` and structural diagrams' author classDef
+    colours are given a dark-mode variant.
     """
     # Step 0: Drop literal NUL bytes so they cannot collide with the
     # NUL-delimited code placeholder sentinels used throughout the pipeline.
     md_text = md_text.replace("\x00", "")
 
-    mermaid_render.begin_conversion(dark=dark)
+    mermaid_render.begin_conversion(dark=dark, adaptive=adaptive)
     try:
         # Step 1: Preprocess Obsidian callouts
         md_text = preprocess_obsidian_callouts(
@@ -1334,6 +1337,7 @@ def render_html(
     ignore_callouts: set[str] | None = None,
     toc: bool = False,
     dark: bool = False,
+    adaptive: bool = False,
 ) -> str:
     """Convert markdown to a full HTML document string.
 
@@ -1355,6 +1359,7 @@ def render_html(
         body_md,
         ignore_callouts=ignore_callouts,
         dark=dark,
+        adaptive=adaptive,
     )
 
     head_extra = _head_extra_for(body)
@@ -1412,4 +1417,5 @@ def convert(
         ignore_callouts=ignore_callouts,
         toc=toc,
         dark=theme_name.lower() == "dark",
+        adaptive=theme_name.lower() == "report",
     )
