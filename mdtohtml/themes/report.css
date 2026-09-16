@@ -76,7 +76,10 @@ h1 {
 h2 {
     font-size: clamp(20px, 3vw, 26px);
     font-weight: 750;
-    margin: 48px 0 10px;
+    /* padding-top gives a non-collapsing section gap (see .sec-label). A heading
+       that follows a kicker zeroes this -- the kicker owns the gap. */
+    margin: 0 0 12px;
+    padding-top: 48px;
 }
 
 h3 {
@@ -212,7 +215,10 @@ h1 + p {
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--ink-faint);
-    margin: 48px 0 0;
+    /* padding-top (not margin) so the section gap does not collapse into the
+       previous block's margin -- it adds to it, matching the reference. */
+    margin: 0 0 8px;
+    padding-top: 48px;
 }
 
 .sec-label + h1,
@@ -221,7 +227,8 @@ h1 + p {
 .sec-label + h4,
 .sec-label + h5,
 .sec-label + h6 {
-    margin-top: 4px;
+    margin-top: 0;
+    padding-top: 0;
 }
 
 /* @section: caption
@@ -621,7 +628,7 @@ pre code {
     justify-content: space-between;
     align-items: baseline;
     gap: 12px;
-    padding: 10px 16px;
+    padding: 11px 16px;
     background: linear-gradient(180deg, #fefefe, #f7f3ea);
     border-bottom: 1px solid #e3ddcf;
     font-family: var(--mono);
@@ -645,6 +652,8 @@ pre code {
     color: var(--ink-soft);
     font-weight: 700;
     font-size: 11px;
+    /* The left label keeps its source case; only the right meta is uppercased. */
+    text-transform: none;
 }
 
 .sheet-head .r {
@@ -806,6 +815,8 @@ pre code {
     color: #4a515c;
     font-weight: 700;
     font-size: 11px;
+    /* The left label keeps its source case; only the right meta is uppercased. */
+    text-transform: none;
 }
 
 .mermaid-header .mh-right {
@@ -1297,7 +1308,7 @@ body:has(#toc) {
 }
 
 body:has(#toc) > main {
-    max-width: 860px;
+    max-width: 1020px;
     margin: 0 auto;
     padding: 48px 32px 96px;
 }
@@ -1305,7 +1316,7 @@ body:has(#toc) > main {
 /* @section: screen */
 @media screen {
     body {
-        max-width: 860px;
+        max-width: 1020px;
         margin: 0 auto;
         padding: 48px 32px 96px;
     }

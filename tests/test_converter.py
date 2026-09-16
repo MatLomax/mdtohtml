@@ -1415,6 +1415,29 @@ class TestReportTheme:
         # out; ordered lists keep their numbers (never matched by ``ul > li``).
         assert re.search(r"#toc li::before \{[^}]*content: none", css) is not None
 
+    def test_report_css_matches_reference_type_and_spacing(self) -> None:
+        css = load_theme_css("report")
+        # Content column widened to the reference width; the old 860px is gone.
+        assert "max-width: 1020px" in css
+        assert "860px" not in css
+        # Section spacing uses non-collapsing padding-top so a section gap adds to
+        # the previous block's margin (matching the reference's section padding).
+        sec = re.search(r"\n\.sec-label \{([^}]*)\}", css).group(1)
+        assert "padding-top: 48px" in sec
+        h2 = re.search(r"\nh2 \{([^}]*)\}", css).group(1)
+        assert "padding-top: 48px" in h2
+        # A heading right after a kicker owns no extra top gap (kicker owns it).
+        tuck = re.search(r"\.sec-label \+ h1,.*?\{([^}]*)\}", css, re.S).group(1)
+        assert "padding-top: 0" in tuck
+        # Code header padding matches the reference (11px).
+        sheet = re.search(r"\n\.sheet-head \{([^}]*)\}", css).group(1)
+        assert "padding: 11px 16px" in sheet
+        # The header LEFT label keeps its source case; the right meta stays upper.
+        left_t = re.search(r"\.sheet-head \.t \{([^}]*)\}", css).group(1)
+        assert "text-transform: none" in left_t
+        left_mh = re.search(r"\.mermaid-header \.mh-left \{([^}]*)\}", css).group(1)
+        assert "text-transform: none" in left_mh
+
     def test_report_css_numbers_ordered_lists_with_accent_counter(self) -> None:
         css = load_theme_css("report")
         # Ordered lists render a mono accent counter, not the default marker.
