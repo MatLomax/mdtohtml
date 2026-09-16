@@ -997,13 +997,11 @@ pre code {
 }
 
 /* @section: tables
-   Each table is wrapped in ``.tbl-scroll`` (by the converter). The card framing
-   -- border, radius, shadow -- and the horizontal scroll live on the wrapper, so
-   a table wider than the content column keeps its column widths and scrolls
-   inside the card rather than overflowing the page. ``overflow-x: auto`` also
-   clips the table's square corners to the wrapper's radius. The table itself
-   drops to ``min-width: min-content`` so a narrow table still fills the width
-   while a wide one grows to its natural size and scrolls. */
+   Each table is wrapped in ``.tbl-scroll`` (by the converter), which carries the
+   card framing -- border, radius, shadow -- and clips the table's square corners
+   to the wrapper's radius. Cells wrap to fit, so a table sizes to the content
+   column rather than forcing a horizontal scroll; ``overflow-x: auto`` is only a
+   fallback for a viewport narrower than the table's ``min-width`` floor. */
 .tbl-scroll {
     margin: 1em 0;
     overflow-x: auto;
@@ -1016,7 +1014,7 @@ pre code {
 table {
     border-collapse: collapse;
     width: 100%;
-    min-width: min-content;
+    min-width: 520px;
     font-size: 14px;
     background: var(--panel);
 }
@@ -1024,11 +1022,6 @@ table {
 thead th {
     font-family: var(--mono);
     font-size: 11px;
-    /* The body line-height (1.6) left the small uppercase caps floating high in
-       the cell, so the whitespace above them didn't match the whitespace below.
-       line-height: 1 wraps the caps tightly, letting the symmetric 8px cell
-       padding read as balanced top and bottom. */
-    line-height: 1;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--ink-faint);
@@ -1038,14 +1031,9 @@ thead th {
 
 th, td {
     text-align: left;
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-bottom: 1px solid var(--line-soft);
     vertical-align: top;
-    /* Keep each cell on one line so columns hold their width: a wide table then
-       grows past the content column and scrolls inside ``.tbl-scroll`` instead
-       of squishing values onto multiple lines. A narrow table's single-line
-       min-content is smaller than the column, so ``width: 100%`` still fills. */
-    white-space: nowrap;
 }
 
 tbody tr:last-child td {
@@ -1401,14 +1389,10 @@ body:has(#toc) > main {
     }
 
     /* Paper has no scrollbar, so an off-page ``.tbl-scroll`` would silently clip
-       its right-hand columns. On print the wrapper stops clipping and cells wrap
-       so a wide table reflows to fit the page instead of losing columns. */
+       its right-hand columns. On print the wrapper stops clipping so a wide table
+       reflows to fit the page instead of losing columns (cells already wrap). */
     .tbl-scroll {
         overflow-x: visible;
-    }
-
-    th, td {
-        white-space: normal;
     }
 
     /* The band's emphasis rides an inset box-shadow and a background tint, both

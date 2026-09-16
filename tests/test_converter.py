@@ -1170,10 +1170,13 @@ class TestReportThemeTableScroll:
         assert "border: 1px solid var(--line)" in scroll
         assert "box-shadow: var(--shadow)" in scroll
 
-    def test_cells_keep_one_line_for_scroll(self) -> None:
+    def test_cells_wrap_to_fit(self) -> None:
         css = load_theme_css("report")
-        # Cells stay single-line so wide tables scroll instead of squishing.
-        assert "white-space: nowrap" in css
+        # Cells wrap so a table sizes to the content column instead of forcing a
+        # horizontal scroll (matching the reference); no nowrap on th/td.
+        th_td = re.search(r"\nth, td \{([^}]*)\}", css).group(1)
+        assert "white-space: nowrap" not in th_td
+        assert "padding: 10px 14px" in th_td
 
     def test_print_suppresses_wrapper_shadow(self) -> None:
         css = load_theme_css("report")
@@ -1182,12 +1185,11 @@ class TestReportThemeTableScroll:
         assert ".tbl-scroll" in print_block
 
     def test_print_reflows_wide_tables_instead_of_clipping(self) -> None:
-        # Paper has no scrollbar, so on print cells wrap and the wrapper stops
-        # clipping, letting a wide table reflow to fit instead of losing columns.
+        # Paper has no scrollbar, so on print the wrapper stops clipping, letting
+        # a wide table reflow to fit instead of losing columns (cells wrap).
         css = load_theme_css("report")
         print_block = css[css.index("@media print"):]
         assert "overflow-x: visible" in print_block
-        assert "white-space: normal" in print_block
 
 
 # ═══════════════════════════════════════════════════════════════════════

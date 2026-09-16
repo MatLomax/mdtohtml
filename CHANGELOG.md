@@ -55,11 +55,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   useful directly below a diagram or code block. A `~ ...` line inside a code
   block, or an empty one, is left as literal text; `~~strikethrough~~` is
   unaffected.
-- Tables are wrapped in a horizontal-scroll container (`.tbl-scroll`). Under the
-  `report` theme the card framing and scrolling now live on the wrapper and
-  cells stay on one line, so a table wider than the content column keeps its
-  column widths and scrolls within the card instead of squishing its values onto
-  multiple lines.
+- Tables are wrapped in a card container (`.tbl-scroll`) that carries the border,
+  radius, and shadow. Under the `report` theme table cells wrap to fit, so a
+  table sizes to the content column rather than forcing a horizontal scroll; a
+  viewport narrower than the table's floor width falls back to scrolling within
+  the card.
 - A code fence can carry a titled header via its `title=` attribute (e.g.
   ```` ```{.python title="Before the fix | converter.py"} ````): under the
   `report` theme the title renders as a header bar on the code card -- a
