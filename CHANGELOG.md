@@ -142,6 +142,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The `report` theme's card-header tracking (`letter-spacing`) on the diagram and
+  code-sheet header bars now resolves against each label's own type size: the
+  spacing is set on the label and meta spans (`0.06em` and `0.1em`) instead of the
+  bar, so it no longer inherits a too-wide value computed from the bar's larger
+  inherited font size.
 - A code block highlighting more than one line (`hl_lines="2 3"`) now bands each
   flagged line on its own row instead of collapsing the consecutive lines onto a
   single row.

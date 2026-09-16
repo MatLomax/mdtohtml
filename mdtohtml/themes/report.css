@@ -712,7 +712,6 @@ pre code {
     background: linear-gradient(180deg, #fefefe, #f7f3ea);
     border-bottom: 1px solid #e3ddcf;
     font-family: var(--mono);
-    letter-spacing: 0.06em;
     text-transform: uppercase;
 }
 
@@ -732,6 +731,9 @@ pre code {
     color: var(--ink-soft);
     font-weight: 700;
     font-size: 12px;
+    /* Tracking is set here, not on the bar, so ``em`` resolves against this
+       label's own 12px rather than the bar's inherited size. */
+    letter-spacing: 0.06em;
     /* The left label keeps its source case; only the right meta is uppercased. */
     text-transform: none;
 }
@@ -740,6 +742,7 @@ pre code {
     color: var(--ink-faint);
     font-weight: 400;
     font-size: 11px;
+    letter-spacing: 0.1em;
 }
 
 .highlight:has(.sheet-head) {
@@ -887,7 +890,6 @@ pre code {
     border-bottom: 1px solid #e3ddcf;
     border-radius: 11px 11px 0 0;
     font-family: var(--mono);
-    letter-spacing: 0.06em;
     text-transform: uppercase;
 }
 
@@ -895,6 +897,9 @@ pre code {
     color: #4a515c;
     font-weight: 700;
     font-size: 12px;
+    /* Tracking is set here, not on the bar, so ``em`` resolves against this
+       label's own 12px rather than the bar's inherited size. */
+    letter-spacing: 0.06em;
     /* The left label keeps its source case; only the right meta is uppercased. */
     text-transform: none;
 }
@@ -903,6 +908,7 @@ pre code {
     color: #767e8b;
     font-weight: 400;
     font-size: 11px;
+    letter-spacing: 0.1em;
 }
 
 /* Adapted diagram cards ride on ``var(--panel)``, so their header keeps the
