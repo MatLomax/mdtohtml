@@ -27,6 +27,11 @@ All 125 tests should pass before you open a PR.
   handling in `mdtohtml/cli.py`.
 - Theme CSS lives on disk under `mdtohtml/themes/` and is never baked into the
   PyInstaller binary — only the KaTeX assets are. Keep that split.
+- `mdtohtml/updater.py` (the `mdtohtml update` subcommand) implements a shared
+  self-update contract. Keep it consistent with
+  [`MatLomax/claude-plugins` `CONVENTIONS.md`](https://github.com/MatLomax/claude-plugins/blob/main/CONVENTIONS.md);
+  the mdtohtml specifics are the `mdtohtml-<os>-<arch>.zip` release asset and the
+  version from `mdtohtml.__version__`.
 
 ## Regenerating KaTeX assets
 
