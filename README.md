@@ -36,9 +36,28 @@ into styled, standalone HTML.
 
 ## Install
 
-**Download a release.** Grab the zip for your platform from the
-[Releases](https://github.com/MatLomax/mdtohtml/releases) page and extract
-it as-is — the executable and its `themes/` folder must sit side by side:
+**Install script (recommended).** One command downloads the latest release for
+your platform, verifies its SHA-256, unpacks the binary and its `themes/`
+folder, and puts `mdtohtml` on your PATH (or tells you how to add it) — no sudo
+and no Python.
+
+```bash
+# Linux
+curl -fsSL https://raw.githubusercontent.com/MatLomax/mdtohtml/main/scripts/install.sh | sh
+```
+
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/MatLomax/mdtohtml/main/scripts/install.ps1 | iex
+```
+
+Both are safe to re-run and honour `MDTOHTML_INSTALL_DIR` (plus
+`MDTOHTML_BIN_DIR` on Linux). Prebuilt binaries are published for Linux and
+Windows (x86_64); on **macOS**, build from source (below) or use pipx.
+
+**Download a release manually.** Grab the zip for your platform from the
+[Releases](https://github.com/MatLomax/mdtohtml/releases) page and extract it
+as-is — the executable and its `themes/` folder must sit side by side:
 
 ```
 /somewhere/
@@ -47,13 +66,32 @@ it as-is — the executable and its `themes/` folder must sit side by side:
     default.css
     dark.css
     print.css
+    report.css
 ```
 
 Running the bare executable with no `themes/` folder next to it (or an empty
 one) fails with a clear error instead of converting anything.
 
-**Or build from source** — see [Building binaries](#building-binaries)
-below.
+**With pipx (needs Python).**
+`pipx install git+https://github.com/MatLomax/mdtohtml` installs the `mdtohtml`
+command with its themes bundled inside the package — no separate `themes/`
+folder to place.
+
+**Or build from source** — see [Building binaries](#building-binaries) below.
+
+### Keeping it current
+
+A release-binary install updates itself in place:
+
+```bash
+mdtohtml update           # upgrade to the latest release if newer
+mdtohtml update --check   # just report whether a newer release exists
+mdtohtml update --force   # reinstall the latest release
+```
+
+`update` downloads this platform's release zip, verifies its SHA-256, and
+atomically replaces the binary and its `themes/` folder — safe to run even while
+the tool is in use. A pipx/pip install is upgraded with pipx/pip instead.
 
 ## Usage
 

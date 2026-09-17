@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Install scripts for a no-Python, no-sudo release install: `scripts/install.sh`
+  (Linux/macOS) and `scripts/install.ps1` (Windows) download the latest release
+  zip, verify its SHA-256, unpack the binary and `themes/`, and put `mdtohtml`
+  on your PATH. Both are re-runnable and honour `MDTOHTML_INSTALL_DIR`.
 - `mdtohtml update` self-updates the release binary in place: it checks the
   latest GitHub release and, when newer, downloads this platform's release zip,
   verifies its SHA-256, and atomically replaces the binary and its `themes/`
