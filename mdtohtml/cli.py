@@ -132,6 +132,15 @@ def _write_stdout(content: str) -> None:
 
 def main() -> None:
     argv = sys.argv[1:]
+
+    # `mdtohtml update ...` is a subcommand, dispatched before the converter
+    # parser so it needs no themes/ and never collides with a Markdown input
+    # (a real input must end in .md).
+    if argv and argv[0] == "update":
+        from .updater import main as update_main
+
+        sys.exit(update_main(argv[1:]))
+
     themes_dir = _pre_resolve_themes_dir(argv)
 
     if not list_themes(themes_dir):

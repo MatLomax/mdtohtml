@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `mdtohtml update` self-updates the release binary in place: it checks the
+  latest GitHub release and, when newer, downloads this platform's release zip,
+  verifies its SHA-256, and atomically replaces the binary and its `themes/`
+  folder (safe even while the binary is running, Windows included).
+  `mdtohtml update --check` reports without changing anything, `--force`
+  reinstalls the latest, and `--auto` (for tooling) updates in the background —
+  TTL-gated, single-flight, never blocking, opt-out via
+  `MDTOHTML_AUTO_UPDATE=0`. A pip/dev install is left to pip.
 - Images embedded as a `data:` URI now survive sanitisation, so a picture can
   travel inside the single self-contained HTML file with no separate asset or
   network fetch. Scoped for safety: a `data:` URI is allowed only as an image
