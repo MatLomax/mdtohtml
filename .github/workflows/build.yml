@@ -37,13 +37,16 @@ jobs:
           BIN=dist/mdtohtml
           printf '# T\n\n$x^2$ and $$y=1$$\n' > math.md
           "$BIN" math.md --themes-dir mdtohtml/themes -o math.html
-          grep -q 'renderMathInElement' math.html
+          grep -q 'class="katex' math.html
           grep -q 'data:font/woff2;base64' math.html
-          echo "math doc OK (KaTeX bundle inlined)"
+          if grep -q 'renderMathInElement' math.html; then
+            echo "ERROR: math doc ships the client-side KaTeX engine" >&2; exit 1
+          fi
+          echo "math doc OK (KaTeX pre-rendered, fonts inlined, no JS engine)"
 
           printf '# P\n\nplain\n' > plain.md
           "$BIN" plain.md --themes-dir mdtohtml/themes -o plain.html
-          if grep -q 'renderMathInElement' plain.html; then
+          if grep -q 'class="katex' plain.html; then
             echo "ERROR: plain doc unexpectedly carries KaTeX" >&2; exit 1
           fi
           if grep -q 'data:font' plain.html; then
@@ -60,17 +63,20 @@ jobs:
           $bin = "dist/mdtohtml.exe"
           "# T`n`n`$x^2`$ and `$`$y=1`$`$`n" | Set-Content -NoNewline math.md
           & $bin math.md --themes-dir mdtohtml/themes -o math.html
-          if (-not (Select-String -Path math.html -Pattern 'renderMathInElement' -Quiet)) {
-            Write-Error "math doc missing renderMathInElement"
+          if (-not (Select-String -Path math.html -Pattern 'class="katex' -SimpleMatch -Quiet)) {
+            Write-Error "math doc missing pre-rendered KaTeX"
           }
           if (-not (Select-String -Path math.html -Pattern 'data:font/woff2;base64' -SimpleMatch -Quiet)) {
             Write-Error "math doc missing inlined KaTeX fonts"
           }
-          Write-Host "math doc OK (KaTeX bundle inlined)"
+          if (Select-String -Path math.html -Pattern 'renderMathInElement' -Quiet) {
+            Write-Error "math doc ships the client-side KaTeX engine"
+          }
+          Write-Host "math doc OK (KaTeX pre-rendered, fonts inlined, no JS engine)"
 
           "# P`n`nplain`n" | Set-Content -NoNewline plain.md
           & $bin plain.md --themes-dir mdtohtml/themes -o plain.html
-          if (Select-String -Path plain.html -Pattern 'renderMathInElement' -Quiet) {
+          if (Select-String -Path plain.html -Pattern 'class="katex' -SimpleMatch -Quiet) {
             Write-Error "plain doc unexpectedly carries KaTeX"
           }
           if (Select-String -Path plain.html -Pattern 'data:font' -SimpleMatch -Quiet) {
