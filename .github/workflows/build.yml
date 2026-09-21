@@ -100,13 +100,18 @@ jobs:
           Write-Host "plain doc OK (zero KaTeX bytes)"
 
           # Pygments must be bundled into the frozen binary. If its lexers are
-          # missing, highlighting silently degrades to plain code and the
-          # ``title=`` filename bar never renders -- so assert BOTH a token span
-          # and the sheet-head bar. ($bt is three backticks; pwsh's backtick is
-          # the escape char, so it is built via [char]96 rather than written raw.)
-          $bt = [char]96 * 3
-          $md = "# H`n`n$bt{.python title=`"Demo | demo.py`"}`ndef greet(): return 1`n$bt`n"
-          $md | Set-Content -NoNewline hl.md
+          # missing, highlighting silently degrades to plain code and the title
+          # filename bar never renders -- so assert BOTH a token span and the
+          # sheet-head bar. Single-quoted lines keep the backtick fences and the
+          # double quotes literal, so no escaping is needed.
+          $lines = @(
+            '# H',
+            '',
+            '```{.python title="Demo | demo.py"}',
+            'def greet(): return 1',
+            '```'
+          )
+          ($lines -join "`n") | Set-Content -NoNewline hl.md
           & $bin hl.md --themes-dir mdtohtml/themes -o hl.html
           if (-not (Select-String -Path hl.html -Pattern '<span class="k">' -SimpleMatch -Quiet)) {
             Write-Error "no Pygments token spans -- highlighting not bundled"
