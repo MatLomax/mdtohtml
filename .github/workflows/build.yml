@@ -59,6 +59,16 @@ jobs:
           fi
           echo "plain doc OK (zero KaTeX bytes)"
 
+          # Pygments must be bundled into the frozen binary. If its lexers are
+          # missing, highlighting silently degrades to plain code and the
+          # ``title=`` filename bar never renders -- so assert BOTH a token span
+          # and the sheet-head bar produced by a titled fence.
+          printf '# H\n\n```{.python title="Demo | demo.py"}\ndef greet(): return 1\n```\n' > hl.md
+          "$BIN" hl.md --themes-dir mdtohtml/themes -o hl.html
+          grep -q '<span class="k">' hl.html || { echo "ERROR: no Pygments token spans -- highlighting not bundled" >&2; exit 1; }
+          grep -q 'class="sheet-head"' hl.html || { echo "ERROR: code-block title bar (sheet-head) missing" >&2; exit 1; }
+          echo "code highlighting + title bar OK (Pygments bundled)"
+
       # ---- Smoke tests (Windows PowerShell) ----
       - name: Smoke test (pwsh)
         if: runner.os == 'Windows'
@@ -88,6 +98,23 @@ jobs:
             Write-Error "plain doc unexpectedly carries fonts"
           }
           Write-Host "plain doc OK (zero KaTeX bytes)"
+
+          # Pygments must be bundled into the frozen binary. If its lexers are
+          # missing, highlighting silently degrades to plain code and the
+          # ``title=`` filename bar never renders -- so assert BOTH a token span
+          # and the sheet-head bar. ($bt is three backticks; pwsh's backtick is
+          # the escape char, so it is built via [char]96 rather than written raw.)
+          $bt = [char]96 * 3
+          $md = "# H`n`n$bt{.python title=`"Demo | demo.py`"}`ndef greet(): return 1`n$bt`n"
+          $md | Set-Content -NoNewline hl.md
+          & $bin hl.md --themes-dir mdtohtml/themes -o hl.html
+          if (-not (Select-String -Path hl.html -Pattern '<span class="k">' -SimpleMatch -Quiet)) {
+            Write-Error "no Pygments token spans -- highlighting not bundled"
+          }
+          if (-not (Select-String -Path hl.html -Pattern 'class="sheet-head"' -SimpleMatch -Quiet)) {
+            Write-Error "code-block title bar (sheet-head) missing"
+          }
+          Write-Host "code highlighting + title bar OK (Pygments bundled)"
 
       # On a tag build, the binary MUST self-report the tag version. This guards
       # the setuptools_scm derivation: if the version ever silently regresses to

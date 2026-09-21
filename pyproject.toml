@@ -28,6 +28,10 @@ classifiers = [
 dependencies = [
     "markdown>=3.5",
     "pymdown-extensions>=10",
+    # Syntax highlighting for fenced code (and the ``title=`` filename bar, which
+    # is only emitted when highlighting runs). pymdown-extensions does not depend
+    # on Pygments, so it is named explicitly here rather than left transitive.
+    "pygments>=2",
     "nh3",
     # Pinned: each bundles a native engine (quickjs-ng) plus, for mermaidx, a
     # specific mermaid.js build, so the exact version fixes both the render

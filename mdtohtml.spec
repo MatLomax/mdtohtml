@@ -29,6 +29,13 @@ _ROOT = Path.cwd()
 # all extensions the converter names are present in the frozen binary.
 hiddenimports = collect_submodules("markdown") + collect_submodules("pymdownx")
 
+# Pygments powers pymdownx.highlight. Its lexer/formatter/style modules are
+# loaded by dotted name through a registry (get_lexer_by_name -> pygments.lexers.*),
+# invisible to static analysis, so without collecting them the frozen binary has
+# the Pygments core but no lexers: highlighting silently degrades to plain code
+# and the ``title=`` filename bar never renders. Collect every submodule.
+hiddenimports += collect_submodules("pygments")
+
 # The JS engine behind both server-side KaTeX and mermaid rendering. quickjs-ng
 # exposes its native extension as the top-level module ``_quickjs`` (its .so
 # sits at the site-packages root), imported by the ``quickjs`` package; name it

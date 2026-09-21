@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Syntax highlighting and code-block title bars now work in the released binary.
+  Pygments was never declared as a dependency, so the release build environment
+  had none of it; and its lexer modules load by dotted name through a registry
+  PyInstaller cannot see, so they must be collected explicitly even when present.
+  Every release binary therefore silently degraded fenced code to unhighlighted
+  text and never rendered the ` ```{.lang title="…"} ` header bar — though running
+  from source did both. Pygments is now an explicit dependency and its submodules
+  are collected into the binary, and a build smoke test asserts a token span and a
+  title bar in the frozen artifact so this cannot regress unnoticed.
+
 ## [0.3.0] - 2026-09-21
 
 ### Changed
