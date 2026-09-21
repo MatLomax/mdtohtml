@@ -212,6 +212,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   faint top-ruled separator (in place of the default horizontal rule) and
   smaller muted text -- rather than falling back to the browser's plain footnote
   block.
+- The release binary now reports its own version accurately. The version is
+  derived from the git tag at build time instead of a hand-maintained string, so
+  `mdtohtml --version` and the `update --check` comparison match the release the
+  binary was built from, and an up-to-date install no longer reports a spurious
+  available update.
 
 ### Removed
 

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=77"]
+requires = ["setuptools>=77", "setuptools_scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -52,8 +52,14 @@ mdtohtml = "mdtohtml.cli:main"
 [tool.setuptools]
 packages = ["mdtohtml"]
 
-[tool.setuptools.dynamic]
-version = { attr = "mdtohtml.__version__" }
+# The version is the single source of truth in the git tag: setuptools_scm
+# derives it from `git describe` at build time and writes it to the generated
+# (gitignored) mdtohtml/_version.py, which __init__ imports. Building at a
+# vX.Y.Z tag yields exactly X.Y.Z; commits past a tag yield a dev version.
+# fallback_version keeps a git-less source tree (no tags, no PKG-INFO) building.
+[tool.setuptools_scm]
+version_file = "mdtohtml/_version.py"
+fallback_version = "0.0.0+unknown"
 
 [tool.setuptools.package-data]
 mdtohtml = ["themes/*.css", "katex/*"]

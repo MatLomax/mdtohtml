@@ -5,6 +5,9 @@ dist/
 build/
 *.egg-info/
 .pytest_cache/
+
+# Version string generated from the git tag by setuptools_scm at build time.
+mdtohtml/_version.py
 .tmp/
 .worklog/
 

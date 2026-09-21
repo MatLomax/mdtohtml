@@ -17,6 +17,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        # Full history and tags: setuptools_scm derives the version from the
+        # git tag, and a shallow checkout hides it (the binary would then report
+        # the fallback version instead of the release tag).
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -83,6 +88,37 @@ jobs:
             Write-Error "plain doc unexpectedly carries fonts"
           }
           Write-Host "plain doc OK (zero KaTeX bytes)"
+
+      # On a tag build, the binary MUST self-report the tag version. This guards
+      # the setuptools_scm derivation: if the version ever silently regresses to
+      # the fallback (e.g. a shallow checkout hides the tag), the mismatch fails
+      # the release instead of shipping a binary that misreports itself and nags
+      # `update --check`. --themes-dir points at the in-tree themes so the check
+      # does not depend on a themes/ folder beside the freshly built binary.
+      - name: Assert binary self-reports the tag version (bash)
+        if: runner.os != 'Windows' && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${GITHUB_REF_NAME#v}"
+          reported="$(dist/mdtohtml --themes-dir mdtohtml/themes --version | awk '{print $2}')"
+          if [ "$reported" != "$expected" ]; then
+            echo "ERROR: binary reports version '$reported' but tag is '$expected'" >&2
+            exit 1
+          fi
+          echo "version OK ($reported matches tag $GITHUB_REF_NAME)"
+
+      - name: Assert binary self-reports the tag version (pwsh)
+        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $expected = "$env:GITHUB_REF_NAME" -replace '^v', ''
+          $reported = (& "dist/mdtohtml.exe" --themes-dir mdtohtml/themes --version).Split(' ')[1]
+          if ($reported -ne $expected) {
+            Write-Error "binary reports version '$reported' but tag is '$expected'"
+          }
+          Write-Host "version OK ($reported matches tag $env:GITHUB_REF_NAME)"
 
       - name: Package release zip (bash)
         if: runner.os != 'Windows'
