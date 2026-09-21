@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `mdtohtml --version` and `mdtohtml -h` no longer require a `themes/` directory
+  to be present: they resolve and print before any theme lookup, so they work
+  from a bare binary with no themes beside it. An unrecognised `--theme` is now
+  reported with a clear message listing the available themes.
+
 ## [0.2.0] - 2026-09-18
 
 ### Added

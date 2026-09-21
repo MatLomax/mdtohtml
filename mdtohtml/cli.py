@@ -27,23 +27,7 @@ from .converter import convert, default_themes_dir, list_themes
 _HTML_EXTENSIONS = {".html"}
 
 
-def _pre_resolve_themes_dir(argv: list[str]) -> Path:
-    """Resolve the themes directory to build ``--theme`` choices against.
-
-    argparse evaluates a ``choices=`` list when the parser is built, before
-    the real parse of ``argv`` runs, so a user-supplied ``--themes-dir`` has
-    to be pulled out of *argv* ahead of building the full parser.
-    """
-    # allow_abbrev=False: otherwise argparse's prefix matching lets a bare
-    # "--theme VALUE" on the real CLI be misread here as an abbreviation of
-    # "--themes-dir VALUE", since this pre-parser knows only the latter.
-    pre = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
-    pre.add_argument("--themes-dir", type=Path, default=None)
-    known, _ = pre.parse_known_args(argv)
-    return known.themes_dir if known.themes_dir is not None else default_themes_dir()
-
-
-def build_parser(themes_dir: Path) -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Convert Markdown files to styled HTML.",
         epilog=(
@@ -62,10 +46,13 @@ def build_parser(themes_dir: Path) -> argparse.ArgumentParser:
         metavar="FILE",
         help="One or more .md files to convert",
     )
+    # No eager ``choices=``: that would force theme discovery at parser-build
+    # time, which must not happen before ``--version``/``-h`` are handled or
+    # before the themes directory has even been resolved. The value is
+    # validated against the resolved themes directory after parsing.
     parser.add_argument(
         "--theme",
         default="default",
-        choices=list_themes(themes_dir),
         help="Theme name (default: default)",
     )
     parser.add_argument(
@@ -141,16 +128,23 @@ def main() -> None:
 
         sys.exit(update_main(argv[1:]))
 
-    themes_dir = _pre_resolve_themes_dir(argv)
+    # Build and parse first, with no themes involved: ``--version`` and ``-h``
+    # resolve here and exit, so neither needs a themes/ directory present.
+    parser = build_parser()
+    args = parser.parse_args(argv)
 
-    if not list_themes(themes_dir):
+    themes_dir = args.themes_dir if args.themes_dir is not None else default_themes_dir()
+    available = list_themes(themes_dir)
+    if not available:
         _error(
             "No themes found. Keep the themes/ folder next to the "
             "executable, or pass --themes-dir."
         )
-
-    parser = build_parser(themes_dir)
-    args = parser.parse_args(argv)
+    if args.theme not in available:
+        _error(
+            f"Unknown theme '{args.theme}'. Available themes: "
+            f"{', '.join(available)}."
+        )
 
     theme: str = args.theme
     output: Path | None = args.output

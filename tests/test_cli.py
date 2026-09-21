@@ -60,8 +60,8 @@ def _run_cli(args: list[str], tmp_themes: Path) -> None:
         patch("sys.argv", ["mdtohtml", *args]),
         patch("mdtohtml.cli.default_themes_dir", return_value=tmp_themes),
         patch("mdtohtml.cli.convert", side_effect=_mock_convert),
-        # Re-build choices so --theme validation sees the tmp themes
-        patch("mdtohtml.cli.list_themes", return_value=["test-theme", "another"]),
+        # The themes --theme is validated against; includes the "default" default.
+        patch("mdtohtml.cli.list_themes", return_value=["default", "test-theme", "another"]),
     ):
         main()
 
@@ -162,7 +162,7 @@ class TestStdoutMode:
             patch("sys.argv", ["mdtohtml", str(md_file)]),
             patch("mdtohtml.cli.default_themes_dir", return_value=tmp_path),
             patch("mdtohtml.cli.convert", side_effect=_raise),
-            patch("mdtohtml.cli.list_themes", return_value=["test-theme", "another"]),
+            patch("mdtohtml.cli.list_themes", return_value=["default", "test-theme", "another"]),
         ):
             with pytest.raises(SystemExit) as exc_info:
                 main()
@@ -180,7 +180,7 @@ class TestStdoutMode:
             patch("sys.argv", ["mdtohtml", str(md_file)]),
             patch("mdtohtml.cli.default_themes_dir", return_value=tmp_path),
             patch("mdtohtml.cli.convert", side_effect=_raise),
-            patch("mdtohtml.cli.list_themes", return_value=["test-theme", "another"]),
+            patch("mdtohtml.cli.list_themes", return_value=["default", "test-theme", "another"]),
         ):
             with pytest.raises(SystemExit) as exc_info:
                 main()
@@ -305,7 +305,7 @@ class TestDirectoryMode:
             patch("sys.argv", ["mdtohtml", *args]),
             patch("mdtohtml.cli.default_themes_dir", return_value=tmp_path),
             patch("mdtohtml.cli.convert", side_effect=_fail_second),
-            patch("mdtohtml.cli.list_themes", return_value=["test-theme", "another"]),
+            patch("mdtohtml.cli.list_themes", return_value=["default", "test-theme", "another"]),
         ):
             with pytest.raises(SystemExit) as exc_info:
                 main()
@@ -349,7 +349,7 @@ class TestThemeFlag:
             ),
             patch("mdtohtml.cli.default_themes_dir", return_value=tmp_path),
             patch("mdtohtml.cli.convert", mock_conv),
-            patch("mdtohtml.cli.list_themes", return_value=["test-theme", "another"]),
+            patch("mdtohtml.cli.list_themes", return_value=["default", "test-theme", "another"]),
         ):
             main()
         mock_conv.assert_called_once()
@@ -379,13 +379,13 @@ class TestThemeFlag:
         tmp_path: Path,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """An unrecognised --theme is a clean argparse error listing choices."""
+        """An unrecognised --theme is a clean error listing available themes."""
         out = tmp_path / "out.html"
         code = _run_cli_exit(
             [str(md_file), "-o", str(out), "--theme", "does-not-exist"],
             tmp_path,
         )
-        assert code == 2
+        assert code == 1
         captured = capsys.readouterr()
         assert "does-not-exist" in captured.err
         assert "test-theme" in captured.err
@@ -434,6 +434,42 @@ class TestMissingThemesDir:
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
         assert "No themes found" in captured.err
+
+    def test_version_needs_no_themes(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """--version resolves without a themes dir (exits 0, prints the version)."""
+        missing_themes = tmp_path / "does-not-exist"
+        with (
+            patch("sys.argv", ["mdtohtml", "--version"]),
+            patch("mdtohtml.cli.default_themes_dir", return_value=missing_themes),
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "mdtohtml" in captured.out
+        assert "No themes found" not in captured.err
+
+    def test_help_needs_no_themes(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """-h resolves without a themes dir (exits 0, prints usage)."""
+        missing_themes = tmp_path / "does-not-exist"
+        with (
+            patch("sys.argv", ["mdtohtml", "-h"]),
+            patch("mdtohtml.cli.default_themes_dir", return_value=missing_themes),
+        ):
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "usage" in captured.out.lower()
+        assert "No themes found" not in captured.err
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -535,7 +571,7 @@ class TestThemesDirFlag:
         self,
         tmp_path: Path,
     ) -> None:
-        """--themes-dir points --theme choices at a custom directory."""
+        """A custom --themes-dir supplies the themes --theme is validated against."""
         custom_dir = tmp_path / "custom-themes"
         custom_dir.mkdir()
         (custom_dir / "mytheme.css").write_text("body { color: blue; }\n", encoding="utf-8")
@@ -544,8 +580,10 @@ class TestThemesDirFlag:
 
         assert list_themes(custom_dir) == ["mytheme"]
 
-        parser = build_parser(custom_dir)
-        assert "mytheme" in parser._option_string_actions["--theme"].choices
+        # --theme carries no eager choices: it accepts any string at parse time
+        # and is validated against the resolved themes dir afterwards.
+        parser = build_parser()
+        assert parser._option_string_actions["--theme"].choices is None
 
     def test_themes_dir_override_used_for_conversion(
         self,
