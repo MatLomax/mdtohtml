@@ -128,11 +128,15 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          set -uo pipefail
           printf '# T\n\nhello\n' > bare.md
-          out="$(dist/mdtohtml bare.md -o bare.html < /dev/null 2>&1)"; code=$?
+          # The convert is EXPECTED to fail; capture it in an `if` so the
+          # runner's `set -e` does not abort on that expected non-zero exit.
+          if out="$(dist/mdtohtml bare.md -o bare.html < /dev/null 2>&1)"; then
+            echo "ERROR: themeless convert unexpectedly succeeded" >&2
+            echo "$out" >&2
+            exit 1
+          fi
           echo "$out"
-          if [ "$code" -eq 0 ]; then echo "ERROR: themeless convert unexpectedly succeeded" >&2; exit 1; fi
           echo "$out" | grep -q 'update --themes' || { echo "ERROR: no themes-fetch guidance shown" >&2; exit 1; }
           echo "themeless binary OK (clean failure + fetch guidance)"
 
@@ -142,10 +146,14 @@ jobs:
         run: |
           "# T`n`nhello`n" | Set-Content -NoNewline bare.md
           $out = (& "dist/mdtohtml.exe" bare.md -o bare.html *>&1 | Out-String)
+          $code = $LASTEXITCODE
           Write-Host $out
-          if ($LASTEXITCODE -eq 0) { Write-Error "themeless convert unexpectedly succeeded" }
-          if ($out -notmatch 'update --themes') { Write-Error "no themes-fetch guidance shown" }
+          if ($code -eq 0) { Write-Host "ERROR: themeless convert unexpectedly succeeded"; exit 1 }
+          if ($out -notmatch 'update --themes') { Write-Host "ERROR: no themes-fetch guidance shown"; exit 1 }
           Write-Host "themeless binary OK (clean failure + fetch guidance)"
+          # Reset the lingering non-zero $LASTEXITCODE from the expected failure
+          # above so the runner does not mark this (passing) step as failed.
+          exit 0
 
       # The binary zip carries only the executable (themeless). Themes ship as a
       # separate, OS-independent asset (mdtohtml-themes.zip), built once on the
