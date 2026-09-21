@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Themes now ship as a **separate release asset** (`mdtohtml-themes.zip`) rather
+  than being bundled inside the platform binary zip. The release binary is
+  themeless; the install scripts download and unpack both assets, so a scripted
+  install still works offline out of the box. `mdtohtml update` now refreshes
+  the themes alongside the binary.
+
+  Upgrade note: an existing 0.1.0/0.2.0 install cannot self-update across this
+  change (the older updater expects themes inside the binary zip); reinstall
+  once with the install script or a manual download to move to this release.
+
+### Added
+
+- Download-on-missing themes: running a conversion with no themes present offers
+  to download the matching themes asset (on an interactive terminal), or prints
+  the command to fetch them when non-interactive. It never downloads without
+  consent and never blocks a script.
+- `mdtohtml update --themes` downloads this release's themes asset into the
+  install directory — the on-demand path for a themeless binary.
+
 ### Fixed
 
 - `mdtohtml --version` and `mdtohtml -h` no longer require a `themes/` directory

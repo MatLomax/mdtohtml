@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
 # Install the mdtohtml release binary on Linux.
 #
-# Downloads the latest release zip for this platform, unpacks the binary and
-# its themes/ folder into an install directory, and symlinks the binary onto
-# your PATH. Re-runnable (idempotent). No sudo and no Python: everything goes
-# under $HOME by default. After this, `mdtohtml update` keeps the binary
-# current itself.
+# Downloads the latest release: the themeless binary zip for this platform plus
+# the separate themes asset, unpacks both (binary + themes/) into an install
+# directory, and symlinks the binary onto your PATH. Re-runnable (idempotent).
+# No sudo and no Python: everything goes under $HOME by default. After this,
+# `mdtohtml update` keeps the binary and themes current itself.
 #
 #   curl -fsSL https://raw.githubusercontent.com/MatLomax/mdtohtml/main/scripts/install.sh | sh
 #
@@ -52,48 +52,57 @@ else
 fi
 command -v unzip >/dev/null 2>&1 || die "need unzip"
 
-# --- Latest release: one API call, reused for the tag and the asset digest ---
+# The binary and its themes ship as two separate assets; install both so the
+# binary works offline immediately.
+themes_asset="mdtohtml-themes.zip"
+
+# --- Latest release: one API call, reused for the tag and each asset's digest ---
 json="$(http_get "https://api.github.com/repos/${REPO}/releases/latest")" \
     || die "could not reach the latest release (offline?)"
 tag="$(printf '%s\n' "$json" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
 [ -n "$tag" ] || die "could not determine the latest release (offline?)"
-# The digest sits inside this asset's object. Scope the search to that object:
-# `here` latches on our asset's "name" line and clears at the next asset's, so a
+
+# Download one named asset and verify its sha256 (skipped with a notice when no
+# digest or no local tool). The digest sits inside that asset's object: `here`
+# latches on the asset's "name" line and clears at the next asset's, so a
 # missing digest degrades to empty rather than picking a later asset's hash.
-digest="$(printf '%s\n' "$json" | awk -v n="\"name\": \"$asset\"" '
-    /"name"/ { here = (index($0, n) > 0) }
-    here && /"digest"/ { if (match($0, /sha256:[0-9a-f]+/)) { print substr($0, RSTART + 7, RLENGTH - 7); exit } }
-')"
-
-echo "Installing mdtohtml $tag ($asset) ..."
-
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-zip="$tmp/$asset"
-http_dl "https://github.com/${REPO}/releases/download/${tag}/${asset}" "$zip" \
-    || die "download failed (does the release have $asset?)"
-
-# --- SHA-256 verification (skipped with a notice when no digest/tool) ---
-if [ -n "$digest" ]; then
-    if command -v sha256sum >/dev/null 2>&1; then actual="$(sha256sum "$zip" | awk '{print $1}')"
-    elif command -v shasum >/dev/null 2>&1; then actual="$(shasum -a 256 "$zip" | awk '{print $1}')"
-    else actual=""; fi
-    if [ -n "$actual" ] && [ "$actual" != "$digest" ]; then
-        die "checksum mismatch for $asset: expected $digest, got $actual"
+fetch_verify() {
+    _asset="$1"
+    _out="$tmp/$1"
+    _digest="$(printf '%s\n' "$json" | awk -v n="\"name\": \"$_asset\"" '
+        /"name"/ { here = (index($0, n) > 0) }
+        here && /"digest"/ { if (match($0, /sha256:[0-9a-f]+/)) { print substr($0, RSTART + 7, RLENGTH - 7); exit } }
+    ')"
+    http_dl "https://github.com/${REPO}/releases/download/${tag}/${_asset}" "$_out" \
+        || die "download failed (does the release have $_asset?)"
+    if [ -n "$_digest" ]; then
+        if command -v sha256sum >/dev/null 2>&1; then _actual="$(sha256sum "$_out" | awk '{print $1}')"
+        elif command -v shasum >/dev/null 2>&1; then _actual="$(shasum -a 256 "$_out" | awk '{print $1}')"
+        else _actual=""; fi
+        if [ -n "$_actual" ] && [ "$_actual" != "$_digest" ]; then
+            die "checksum mismatch for $_asset: expected $_digest, got $_actual"
+        fi
+        [ -n "$_actual" ] && echo "  sha256 verified ($_asset)" || echo "  ($_asset: no sha256 tool; verification skipped, HTTPS)"
+    else
+        echo "  ($_asset: release digest unavailable; verification skipped, HTTPS)"
     fi
-    [ -n "$actual" ] && echo "  sha256 verified" || echo "  (no sha256 tool; verification skipped, downloaded over HTTPS)"
-else
-    echo "  (release digest unavailable; verification skipped, downloaded over HTTPS)"
-fi
+}
 
-# --- Unpack into a sibling of the install dir (same filesystem), then swap ---
+echo "Installing mdtohtml $tag ($asset + $themes_asset) ..."
+fetch_verify "$asset"
+fetch_verify "$themes_asset"
+
+# --- Unpack both assets into a sibling of the install dir, then swap ---
 parent="$(dirname "$INSTALL_DIR")"
 mkdir -p "$parent"
 newdir="$(mktemp -d "$parent/.mdtohtml-new.XXXXXX")"
 trap 'rm -rf "$tmp" "$newdir"' EXIT
-unzip -q "$zip" -d "$newdir"
-[ -f "$newdir/mdtohtml" ] || die "release archive has no mdtohtml binary"
-[ -d "$newdir/themes" ] || die "release archive has no themes/ directory"
+unzip -q "$tmp/$asset" -d "$newdir"
+unzip -q "$tmp/$themes_asset" -d "$newdir"
+[ -f "$newdir/mdtohtml" ] || die "binary archive has no mdtohtml binary"
+[ -d "$newdir/themes" ] || die "themes archive has no themes/ directory"
 chmod 0755 "$newdir/mdtohtml"
 
 # Only ever replace an empty dir or a prior mdtohtml install, never someone

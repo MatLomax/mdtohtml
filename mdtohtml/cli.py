@@ -99,6 +99,42 @@ def _log(msg: str) -> None:
     print(msg, file=sys.stderr)
 
 
+def _offer_theme_download() -> bool:
+    """When no themes are present, offer to download them; True if now installed.
+
+    Only meaningful for a frozen release binary using its default themes
+    location: a dev/pip install ships its themes with the package, and a custom
+    --themes-dir is the user's own to populate (handled by the caller, which
+    only calls this for the default location). On an interactive terminal this
+    prompts and, on yes, fetches the matching themes asset via the updater. When
+    non-interactive it prints the exact command to run and declines, so it never
+    blocks a script or downloads without consent.
+    """
+    from .updater import UpdateError, ensure_themes, is_frozen
+
+    if not is_frozen():
+        return False
+    if not (sys.stdin.isatty() and sys.stderr.isatty()):
+        _log("No themes found. Run `mdtohtml update --themes` to download them.")
+        return False
+    # Prompt on stderr, not via input()'s stdout prompt: stdout is the HTML data
+    # channel (a bare `mdtohtml x.md` writes the document there).
+    print("No themes found. Download them for this release now? [y/N] ", file=sys.stderr, end="", flush=True)
+    try:
+        answer = input()
+    except EOFError:
+        return False
+    if answer.strip().lower() not in {"y", "yes"}:
+        return False
+    try:
+        ensure_themes()
+    except UpdateError as exc:
+        _log(f"Could not download themes: {exc}")
+        return False
+    _log("Themes installed.")
+    return True
+
+
 def _is_file_output(path: Path) -> bool:
     """Return True if *path* looks like a file rather than a directory."""
     return path.suffix.lower() in _HTML_EXTENSIONS
@@ -135,6 +171,13 @@ def main() -> None:
 
     themes_dir = args.themes_dir if args.themes_dir is not None else default_themes_dir()
     available = list_themes(themes_dir)
+    if not available:
+        # Only the default location is auto-fillable; a custom --themes-dir is
+        # the user's to populate. Downloading writes to the default themes dir,
+        # so re-resolve it before re-checking.
+        if args.themes_dir is None and _offer_theme_download():
+            themes_dir = default_themes_dir()
+            available = list_themes(themes_dir)
     if not available:
         _error(
             "No themes found. Keep the themes/ folder next to the "

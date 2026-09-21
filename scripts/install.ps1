@@ -2,9 +2,10 @@
 .SYNOPSIS
     Install the mdtohtml release binary on Windows.
 .DESCRIPTION
-    Downloads the latest Windows release zip, unpacks the binary and its
-    themes/ folder into an install directory, and adds that directory to your
-    user PATH. Re-runnable. After this, `mdtohtml update` keeps it current.
+    Downloads the latest release: the themeless Windows binary zip plus the
+    separate themes asset, unpacks both (binary + themes/) into an install
+    directory, and adds that directory to your user PATH. Re-runnable. After
+    this, `mdtohtml update` keeps the binary and themes current.
 
     Install to a custom location:
         $env:MDTOHTML_INSTALL_DIR = 'C:\tools\mdtohtml'
@@ -32,7 +33,9 @@ if ($installDir -eq '' -or $installDir -eq $env:USERPROFILE.TrimEnd('\', '/') -o
 if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
     throw "no prebuilt binary for Windows/$($env:PROCESSOR_ARCHITECTURE); build from source: https://github.com/$repo"
 }
+# The binary and its themes ship as two separate assets; install both.
 $asset = 'mdtohtml-windows-x86_64.zip'
+$themesAsset = 'mdtohtml-themes.zip'
 $headers = @{ 'User-Agent' = 'mdtohtml-install' }
 
 Write-Host "Resolving the latest mdtohtml release ..."
@@ -40,36 +43,40 @@ $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$repo/releases/l
 $tag = $release.tag_name
 if (-not $tag) { throw 'could not determine the latest release (offline?)' }
 
-$assetInfo = $release.assets | Where-Object { $_.name -eq $asset } | Select-Object -First 1
-if (-not $assetInfo) { throw "the latest release ($tag) has no asset $asset" }
-
-Write-Host "Installing mdtohtml $tag ($asset) ..."
+Write-Host "Installing mdtohtml $tag ($asset + $themesAsset) ..."
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("mdtohtml-install-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmp | Out-Null
 try {
-    $zip = Join-Path $tmp $asset
-    Invoke-WebRequest -Uri $assetInfo.browser_download_url -OutFile $zip -Headers $headers
-
-    # SHA-256 verification (GitHub publishes a per-asset digest).
-    $digest = $assetInfo.digest
-    if ($digest -and $digest.StartsWith('sha256:')) {
-        $expected = $digest.Substring(7).ToLower()
-        $actual = (Get-FileHash -Algorithm SHA256 -Path $zip).Hash.ToLower()
-        if ($actual -ne $expected) {
-            throw "checksum mismatch for ${asset}: expected $expected, got $actual"
+    # Download one named asset and verify its sha256 (GitHub publishes a per-asset digest).
+    function Get-Verified($name) {
+        $info = $release.assets | Where-Object { $_.name -eq $name } | Select-Object -First 1
+        if (-not $info) { throw "the latest release ($tag) has no asset $name" }
+        $out = Join-Path $tmp $name
+        Invoke-WebRequest -Uri $info.browser_download_url -OutFile $out -Headers $headers
+        $digest = $info.digest
+        if ($digest -and $digest.StartsWith('sha256:')) {
+            $expected = $digest.Substring(7).ToLower()
+            $actual = (Get-FileHash -Algorithm SHA256 -Path $out).Hash.ToLower()
+            if ($actual -ne $expected) {
+                throw "checksum mismatch for ${name}: expected $expected, got $actual"
+            }
+            Write-Host "  sha256 verified ($name)"
+        } else {
+            Write-Host "  (${name}: release digest unavailable; verification skipped, downloaded over HTTPS)"
         }
-        Write-Host '  sha256 verified'
-    } else {
-        Write-Host '  (release digest unavailable; verification skipped, downloaded over HTTPS)'
+        return $out
     }
+    $binZip = Get-Verified $asset
+    $themesZip = Get-Verified $themesAsset
 
-    # Unpack into a sibling of the install dir (same volume), then swap.
+    # Unpack both into a sibling of the install dir (same volume), then swap.
     $parent = Split-Path $installDir
     New-Item -ItemType Directory -Path $parent -Force | Out-Null
     $stage = "$installDir.new-$([guid]::NewGuid().ToString('N'))"
-    Expand-Archive -Path $zip -DestinationPath $stage -Force
-    if (-not (Test-Path (Join-Path $stage 'mdtohtml.exe'))) { throw 'release archive has no mdtohtml.exe' }
-    if (-not (Test-Path (Join-Path $stage 'themes'))) { throw 'release archive has no themes directory' }
+    Expand-Archive -Path $binZip -DestinationPath $stage -Force
+    Expand-Archive -Path $themesZip -DestinationPath $stage -Force
+    if (-not (Test-Path (Join-Path $stage 'mdtohtml.exe'))) { throw 'binary archive has no mdtohtml.exe' }
+    if (-not (Test-Path (Join-Path $stage 'themes'))) { throw 'themes archive has no themes directory' }
 
     if (Test-Path $installDir) {
         # Only ever replace a prior mdtohtml install or an empty dir.

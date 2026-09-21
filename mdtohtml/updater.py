@@ -14,6 +14,8 @@ Subcommand surface (``mdtohtml update [FLAGS]``):
                  replace the binary in place.  Reports ``old -> new`` or that
                  it is already current.
     --check      Report whether a newer release exists; change nothing.
+    --themes     Download this release's themes asset into the install
+                 directory (the on-demand path for a themeless binary).
     --auto       The background path a session-start hook calls: TTL-gated,
                  timeout-bounded, single-flight, and fully detached, so it
                  never blocks or fails the caller.  Opt out with
@@ -44,8 +46,14 @@ from . import __version__
 
 REPO = "MatLomax/mdtohtml"
 _API_LATEST = "https://api.github.com/repos/{repo}/releases/latest"
+_API_TAG = "https://api.github.com/repos/{repo}/releases/tags/{tag}"
 _DOWNLOAD_URL = "https://github.com/{repo}/releases/download/{tag}/{asset}"
 _UA = "mdtohtml-self-update"
+
+# The themes/ folder ships as its own OS-independent release asset. The binary
+# is themeless; it downloads this on demand (and `update` refreshes it), so the
+# two are matched to the release the binary was built from.
+THEMES_ASSET = "mdtohtml-themes.zip"
 
 AUTO_UPDATE_ENV = "MDTOHTML_AUTO_UPDATE"
 CHECK_TTL_ENV = "MDTOHTML_UPDATE_CHECK_TTL"
@@ -169,19 +177,11 @@ def _request(url: str, timeout: int) -> urllib.request.Request:
     return urllib.request.Request(url, headers={"User-Agent": _UA, "Accept": "application/vnd.github+json"})
 
 
-def fetch_latest(repo: str = REPO, timeout: int = _HTTP_TIMEOUT) -> dict | None:
-    """Latest release as ``{"tag": str, "assets": {name: {"url", "digest"}}}``.
+def _parse_release(data: dict) -> dict | None:
+    """Shape a GitHub release JSON into ``{"tag", "assets": {name: {url, digest}}}``.
 
-    Returns ``None`` on any network/parse failure so callers can stay silent
-    when offline.
+    Returns ``None`` when the payload carries no tag.
     """
-    try:
-        with urllib.request.urlopen(
-            _request(_API_LATEST.format(repo=repo), timeout), timeout=timeout
-        ) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
-        return None
     tag = data.get("tag_name")
     if not tag:
         return None
@@ -196,6 +196,35 @@ def fetch_latest(repo: str = REPO, timeout: int = _HTTP_TIMEOUT) -> dict | None:
             "digest": digest[len("sha256:") :] if digest.startswith("sha256:") else "",
         }
     return {"tag": tag, "assets": assets}
+
+
+def _fetch_json(url: str, timeout: int) -> dict | None:
+    """GET *url* and parse JSON, or ``None`` on any network/parse failure."""
+    try:
+        with urllib.request.urlopen(_request(url, timeout), timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
+        return None
+
+
+def fetch_latest(repo: str = REPO, timeout: int = _HTTP_TIMEOUT) -> dict | None:
+    """Latest release as ``{"tag": str, "assets": {name: {"url", "digest"}}}``.
+
+    Returns ``None`` on any network/parse failure so callers can stay silent
+    when offline.
+    """
+    data = _fetch_json(_API_LATEST.format(repo=repo), timeout)
+    return _parse_release(data) if data is not None else None
+
+
+def fetch_release(tag: str, repo: str = REPO, timeout: int = _HTTP_TIMEOUT) -> dict | None:
+    """The release for a specific *tag* as ``{"tag", "assets"}``, or ``None``.
+
+    Used to fetch the themes asset from the release the running binary was built
+    from, keeping themes version-matched to the converter.
+    """
+    data = _fetch_json(_API_TAG.format(repo=repo, tag=tag), timeout)
+    return _parse_release(data) if data is not None else None
 
 
 def _download(url: str, dest: Path, timeout: int) -> bool:
@@ -262,14 +291,12 @@ def _clear_stale(directory: Path) -> None:
             pass
 
 
-def apply_release(zip_path: Path, dest: Path) -> None:
-    """Extract the release *zip_path* and swap its binary + ``themes/`` into *dest*.
+def apply_binary(zip_path: Path, dest: Path) -> None:
+    """Extract the binary from *zip_path* and swap it into *dest*.
 
-    Staging is unpacked on the same filesystem as *dest* so each swap is a
-    rename, not a cross-device copy.  Themes are swapped before the binary, so
-    an interruption leaves the safe inconsistency (old binary + new themes,
-    which still renders) rather than a new binary against missing theme files.
-    Raises ``ValueError`` if the archive is missing the expected members.
+    Staging is unpacked on the same filesystem as *dest* so the swap is a
+    rename, not a cross-device copy.  Raises ``ValueError`` if the archive has
+    no binary.
     """
     _clear_stale(dest)
     with tempfile.TemporaryDirectory(dir=dest.parent, prefix=".mdtohtml-update-") as tmp:
@@ -277,13 +304,9 @@ def apply_release(zip_path: Path, dest: Path) -> None:
         with zipfile.ZipFile(zip_path) as zf:
             zf.extractall(stage)
         new_bin = stage / _binary_name()
-        new_themes = stage / "themes"
         if not new_bin.is_file():
             raise ValueError(f"release archive has no {_binary_name()}")
-        if not new_themes.is_dir():
-            raise ValueError("release archive has no themes/ directory")
         new_bin.chmod(0o755)
-        _swap_dir(new_themes, dest / "themes")
         _swap_file(new_bin, dest / _binary_name())
         for extra in ("LICENSE", "THIRD-PARTY-LICENSES"):
             src = stage / extra
@@ -294,6 +317,22 @@ def apply_release(zip_path: Path, dest: Path) -> None:
                     pass
 
 
+def apply_themes(zip_path: Path, dest: Path) -> None:
+    """Extract the ``themes/`` folder from *zip_path* and swap it into *dest*.
+
+    Staging is unpacked on *dest*'s filesystem so the swap is a rename.  Raises
+    ``ValueError`` if the archive has no ``themes/`` directory.
+    """
+    with tempfile.TemporaryDirectory(dir=dest.parent, prefix=".mdtohtml-themes-") as tmp:
+        stage = Path(tmp)
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(stage)
+        new_themes = stage / "themes"
+        if not new_themes.is_dir():
+            raise ValueError("themes archive has no themes/ directory")
+        _swap_dir(new_themes, dest / "themes")
+
+
 # ── Commands ──
 
 
@@ -301,12 +340,27 @@ class UpdateError(Exception):
     """A self-update could not be completed (network, checksum, or write failure)."""
 
 
-def _resolve_update(force: bool, timeout: int) -> tuple[str, str, dict] | None:
-    """Return ``(current, tag, asset)`` when an update should proceed, else ``None``.
+def _download_verified(asset: dict, dest: Path, tag: str, timeout: int) -> Path:
+    """Download *asset* to *dest* and verify its sha256; raise on any failure."""
+    if not _download(asset["url"], dest, timeout):
+        raise UpdateError(f"download failed: {asset['url']}")
+    expected = asset.get("digest")
+    if expected:
+        actual = _sha256(dest)
+        if actual != expected:
+            raise UpdateError(
+                f"checksum mismatch for {dest.name} {tag}: expected {expected}, got {actual}"
+            )
+    return dest
 
-    ``None`` means nothing to do (already current, offline, or no asset for this
-    platform).  Raises :class:`UpdateError` only for a genuine, reportable
-    problem the caller asked to surface.
+
+def _resolve_update(force: bool, timeout: int) -> tuple[str, str, dict, dict] | None:
+    """Return ``(current, tag, binary_asset, themes_asset)`` when an update should
+    proceed, else ``None``.
+
+    ``None`` means nothing to do (already current).  Raises :class:`UpdateError`
+    for a genuine, reportable problem (offline, or a release missing an asset
+    this platform needs).
     """
     current = __version__
     latest = fetch_latest(REPO, timeout)
@@ -316,20 +370,31 @@ def _resolve_update(force: bool, timeout: int) -> tuple[str, str, dict] | None:
     if not force and not semver_lt(current, tag):
         return None
     name = asset_name()
-    asset = latest["assets"].get(name)
-    if not asset or not asset.get("url"):
+    binary_asset = latest["assets"].get(name)
+    if not binary_asset or not binary_asset.get("url"):
         raise UpdateError(
             f"the latest release ({tag}) has no asset for this platform ({name}); "
             "download a release manually from "
             f"https://github.com/{REPO}/releases"
         )
-    return current, tag, asset
+    themes_asset = latest["assets"].get(THEMES_ASSET)
+    if not themes_asset or not themes_asset.get("url"):
+        raise UpdateError(
+            f"the latest release ({tag}) has no {THEMES_ASSET}; "
+            "download a release manually from "
+            f"https://github.com/{REPO}/releases"
+        )
+    return current, tag, binary_asset, themes_asset
 
 
 def do_update(force: bool = False, timeout: int = _HTTP_TIMEOUT) -> tuple[str, str] | None:
     """Perform the update if newer (or *force*); return ``(old, new)`` or ``None``.
 
-    ``None`` means already current.  Raises :class:`UpdateError` on failure.
+    Downloads and verifies both the binary and themes assets, then swaps them in
+    place -- themes before the binary, so an interruption leaves the safe
+    inconsistency (old binary + new themes, which still renders) rather than a
+    new binary against stale or missing themes.  ``None`` means already current.
+    Raises :class:`UpdateError` on failure.
     """
     if not is_frozen():
         raise UpdateError(
@@ -339,7 +404,7 @@ def do_update(force: bool = False, timeout: int = _HTTP_TIMEOUT) -> tuple[str, s
     resolved = _resolve_update(force, timeout)
     if resolved is None:
         return None
-    current, tag, asset = resolved
+    current, tag, binary_asset, themes_asset = resolved
     dest = install_dir()
     if not os.access(dest, os.W_OK):
         raise UpdateError(
@@ -347,22 +412,50 @@ def do_update(force: bool = False, timeout: int = _HTTP_TIMEOUT) -> tuple[str, s
             f"the release from https://github.com/{REPO}/releases"
         )
     with tempfile.TemporaryDirectory(prefix="mdtohtml-dl-") as tmp:
-        zip_path = Path(tmp) / asset_name()
-        if not _download(asset["url"], zip_path, timeout):
-            raise UpdateError(f"download failed: {asset['url']}")
-        expected = asset.get("digest")
-        if expected:
-            actual = _sha256(zip_path)
-            if actual != expected:
-                raise UpdateError(
-                    f"checksum mismatch for {asset_name()} {tag}: "
-                    f"expected {expected}, got {actual}"
-                )
+        tmpp = Path(tmp)
+        bin_zip = _download_verified(binary_asset, tmpp / asset_name(), tag, timeout)
+        themes_zip = _download_verified(themes_asset, tmpp / THEMES_ASSET, tag, timeout)
         try:
-            apply_release(zip_path, dest)
+            apply_themes(themes_zip, dest)
+            apply_binary(bin_zip, dest)
         except (zipfile.BadZipFile, ValueError, OSError) as exc:
             raise UpdateError(f"could not apply the update: {exc}") from exc
     return current, _norm(tag)
+
+
+def ensure_themes(dest: Path | None = None, timeout: int = _HTTP_TIMEOUT) -> None:
+    """Download this binary's matching themes asset into *dest*``/themes``.
+
+    Fetches :data:`THEMES_ASSET` from the release matching the running binary's
+    own version (its tag), verifies the sha256, and swaps it into place, so the
+    themes match the converter that will use them.  *dest* defaults to the
+    install directory.  Raises :class:`UpdateError` on any failure (offline, no
+    matching release/asset, unwritable target, or checksum mismatch).
+    """
+    if dest is None:
+        dest = install_dir()
+    tag = f"v{_norm(__version__)}"
+    release = fetch_release(tag, REPO, timeout)
+    if release is None:
+        raise UpdateError(
+            f"could not reach the {tag} release to download themes (offline, or no "
+            f"such release); download {THEMES_ASSET} manually from "
+            f"https://github.com/{REPO}/releases"
+        )
+    asset = release["assets"].get(THEMES_ASSET)
+    if not asset or not asset.get("url"):
+        raise UpdateError(
+            f"the {tag} release has no {THEMES_ASSET}; download it manually from "
+            f"https://github.com/{REPO}/releases/tag/{tag}"
+        )
+    if not os.access(dest, os.W_OK):
+        raise UpdateError(f"{dest} is not writable by you; cannot install themes there")
+    with tempfile.TemporaryDirectory(prefix="mdtohtml-themes-dl-") as tmp:
+        zip_path = _download_verified(asset, Path(tmp) / THEMES_ASSET, tag, timeout)
+        try:
+            apply_themes(zip_path, dest)
+        except (zipfile.BadZipFile, ValueError, OSError) as exc:
+            raise UpdateError(f"could not install themes: {exc}") from exc
 
 
 def _cmd_update(force: bool) -> int:
@@ -376,6 +469,19 @@ def _cmd_update(force: bool) -> int:
     else:
         old, new = result
         print(f"mdtohtml updated {old} -> {new}.")
+    return 0
+
+
+def _cmd_themes() -> int:
+    if not is_frozen():
+        print("mdtohtml is a pip/dev install; its themes ship with the package.")
+        return 0
+    try:
+        ensure_themes()
+    except UpdateError as exc:
+        print(f"mdtohtml: {exc}", file=sys.stderr)
+        return 1
+    print(f"mdtohtml: themes for {__version__} installed in {install_dir() / 'themes'}.")
     return 0
 
 
@@ -536,6 +642,7 @@ def main(argv: list[str]) -> int:
         description="Update the mdtohtml release binary in place.",
     )
     parser.add_argument("--check", action="store_true", help="Report whether a newer release exists; change nothing.")
+    parser.add_argument("--themes", action="store_true", help="Download this release's themes into the install directory.")
     parser.add_argument("--auto", action="store_true", help="Background, TTL-gated path for a session-start hook.")
     parser.add_argument("--force", action="store_true", help="Reinstall the latest release even when versions match.")
     # Internal: a detached --auto child passes the lock dir to release when done.
@@ -546,6 +653,8 @@ def main(argv: list[str]) -> int:
         return _cmd_auto()
     if args.check:
         return _cmd_check()
+    if args.themes:
+        return _cmd_themes()
 
     try:
         return _cmd_update(args.force)

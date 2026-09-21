@@ -736,3 +736,87 @@ class TestDefaultThemesDir:
             result = default_themes_dir()
         assert result == tmp_path / "themes"
         assert not result.exists()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Download-on-missing theme offer (_offer_theme_download)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class _FakeStream(io.StringIO):
+    """A StringIO whose isatty() is fixed, so TTY branches are deterministic."""
+
+    def __init__(self, tty: bool) -> None:
+        super().__init__()
+        self._tty = tty
+
+    def isatty(self) -> bool:
+        return self._tty
+
+
+class TestThemeDownloadOffer:
+    def test_not_frozen_declines_silently(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A dev/pip install (not frozen) never offers a download and says nothing."""
+        import mdtohtml.updater as up
+        from mdtohtml.cli import _offer_theme_download
+
+        monkeypatch.setattr(up, "is_frozen", lambda: False)
+        err = _FakeStream(tty=True)
+        monkeypatch.setattr("sys.stderr", err)
+        assert _offer_theme_download() is False
+        assert err.getvalue() == ""
+
+    def test_non_tty_prints_command(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Non-interactive: print the fetch command and decline (never block)."""
+        import mdtohtml.updater as up
+        from mdtohtml.cli import _offer_theme_download
+
+        monkeypatch.setattr(up, "is_frozen", lambda: True)
+        monkeypatch.setattr("sys.stdin", _FakeStream(tty=False))
+        err = _FakeStream(tty=False)
+        monkeypatch.setattr("sys.stderr", err)
+        assert _offer_theme_download() is False
+        assert "update --themes" in err.getvalue()
+
+    def test_interactive_no_declines(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mdtohtml.updater as up
+        from mdtohtml.cli import _offer_theme_download
+
+        monkeypatch.setattr(up, "is_frozen", lambda: True)
+        monkeypatch.setattr("sys.stdin", _FakeStream(tty=True))
+        monkeypatch.setattr("sys.stderr", _FakeStream(tty=True))
+        monkeypatch.setattr("builtins.input", lambda *a: "n")
+        called = {}
+        monkeypatch.setattr(up, "ensure_themes", lambda *a, **k: called.setdefault("yes", True))
+        assert _offer_theme_download() is False
+        assert "yes" not in called
+
+    def test_interactive_yes_downloads(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mdtohtml.updater as up
+        from mdtohtml.cli import _offer_theme_download
+
+        monkeypatch.setattr(up, "is_frozen", lambda: True)
+        monkeypatch.setattr("sys.stdin", _FakeStream(tty=True))
+        monkeypatch.setattr("sys.stderr", _FakeStream(tty=True))
+        monkeypatch.setattr("builtins.input", lambda *a: "y")
+        called = {}
+        monkeypatch.setattr(up, "ensure_themes", lambda *a, **k: called.setdefault("yes", True))
+        assert _offer_theme_download() is True
+        assert called["yes"]
+
+    def test_interactive_yes_download_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import mdtohtml.updater as up
+        from mdtohtml.cli import _offer_theme_download
+
+        monkeypatch.setattr(up, "is_frozen", lambda: True)
+        monkeypatch.setattr("sys.stdin", _FakeStream(tty=True))
+        err = _FakeStream(tty=True)
+        monkeypatch.setattr("sys.stderr", err)
+        monkeypatch.setattr("builtins.input", lambda *a: "y")
+
+        def boom(*a, **k):
+            raise up.UpdateError("network down")
+
+        monkeypatch.setattr(up, "ensure_themes", boom)
+        assert _offer_theme_download() is False
+        assert "network down" in err.getvalue()

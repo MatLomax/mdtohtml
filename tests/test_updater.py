@@ -141,13 +141,21 @@ def test_fetch_latest_none_without_tag(monkeypatch):
 # ── Building a fake release zip ──
 
 
-def _make_release_zip(dest: Path, binary_bytes: bytes = b"NEW-BINARY", theme_css: str = "body{}") -> Path:
-    """Write a release zip (binary + themes/ + LICENSE) laid out like the real one."""
-    zpath = dest / "release.zip"
+def _make_binary_zip(dest: Path, binary_bytes: bytes = b"NEW-BINARY", with_license: bool = True) -> Path:
+    """A themeless binary release asset (binary + optional LICENSE)."""
+    zpath = dest / "binary.zip"
     with zipfile.ZipFile(zpath, "w") as zf:
         zf.writestr(updater._binary_name(), binary_bytes)
+        if with_license:
+            zf.writestr("LICENSE", "MIT")
+    return zpath
+
+
+def _make_themes_zip(dest: Path, theme_css: str = "body{}") -> Path:
+    """A themes release asset (a themes/ folder)."""
+    zpath = dest / "themes.zip"
+    with zipfile.ZipFile(zpath, "w") as zf:
         zf.writestr("themes/report.css", theme_css)
-        zf.writestr("LICENSE", "MIT")
     return zpath
 
 
@@ -162,52 +170,61 @@ def _fake_install(dest: Path) -> Path:
     return inst
 
 
-# ── apply_release ──
+# ── apply_binary / apply_themes ──
 
 
-def test_apply_release_swaps_binary_and_themes(tmp_path):
+def test_apply_binary_swaps_binary_and_license(tmp_path):
     inst = _fake_install(tmp_path)
-    zpath = _make_release_zip(tmp_path, binary_bytes=b"NEW-BINARY", theme_css="body{color:red}")
+    zpath = _make_binary_zip(tmp_path, binary_bytes=b"NEW-BINARY")
 
-    updater.apply_release(zpath, inst)
+    updater.apply_binary(zpath, inst)
 
     assert (inst / updater._binary_name()).read_bytes() == b"NEW-BINARY"
-    # new themes replaced the old ones entirely
-    assert (inst / "themes" / "report.css").read_text() == "body{color:red}"
-    assert not (inst / "themes" / "old.css").exists()
     # license copied over
     assert (inst / "LICENSE").read_text() == "MIT"
     # stale *.old-* leftover cleared
     assert not (inst / f"{updater._binary_name()}.old-999").exists()
+    # apply_binary does not touch themes
+    assert (inst / "themes" / "old.css").read_text() == "old"
 
 
-def test_apply_release_rejects_archive_without_binary(tmp_path):
+def test_apply_binary_rejects_archive_without_binary(tmp_path):
     inst = _fake_install(tmp_path)
     zpath = tmp_path / "bad.zip"
     with zipfile.ZipFile(zpath, "w") as zf:
-        zf.writestr("themes/report.css", "body{}")
+        zf.writestr("LICENSE", "MIT")
     with pytest.raises(ValueError, match="no mdtohtml"):
-        updater.apply_release(zpath, inst)
+        updater.apply_binary(zpath, inst)
 
 
-def test_apply_release_rejects_archive_without_themes(tmp_path):
+def test_apply_binary_without_license_ok(tmp_path):
+    """A binary archive missing the optional LICENSE files still applies."""
+    inst = _fake_install(tmp_path)
+    zpath = _make_binary_zip(tmp_path, binary_bytes=b"NEW", with_license=False)
+    updater.apply_binary(zpath, inst)
+    assert (inst / updater._binary_name()).read_bytes() == b"NEW"
+
+
+def test_apply_themes_swaps_themes(tmp_path):
+    inst = _fake_install(tmp_path)
+    zpath = _make_themes_zip(tmp_path, theme_css="body{color:red}")
+
+    updater.apply_themes(zpath, inst)
+
+    # new themes replaced the old ones entirely
+    assert (inst / "themes" / "report.css").read_text() == "body{color:red}"
+    assert not (inst / "themes" / "old.css").exists()
+    # apply_themes does not touch the binary
+    assert (inst / updater._binary_name()).read_bytes() == b"OLD-BINARY"
+
+
+def test_apply_themes_rejects_archive_without_themes(tmp_path):
     inst = _fake_install(tmp_path)
     zpath = tmp_path / "bad.zip"
     with zipfile.ZipFile(zpath, "w") as zf:
-        zf.writestr(updater._binary_name(), b"x")
+        zf.writestr("notthemes/report.css", "body{}")
     with pytest.raises(ValueError, match="no themes"):
-        updater.apply_release(zpath, inst)
-
-
-def test_apply_release_without_license_ok(tmp_path):
-    """A release archive missing the optional LICENSE files still applies."""
-    inst = _fake_install(tmp_path)
-    zpath = tmp_path / "nolicense.zip"
-    with zipfile.ZipFile(zpath, "w") as zf:
-        zf.writestr(updater._binary_name(), b"NEW")
-        zf.writestr("themes/report.css", "body{}")
-    updater.apply_release(zpath, inst)
-    assert (inst / updater._binary_name()).read_bytes() == b"NEW"
+        updater.apply_themes(zpath, inst)
 
 
 def test_swap_file_windows_rolls_back_on_failed_move(monkeypatch, tmp_path):
@@ -247,6 +264,40 @@ def _prime_frozen(monkeypatch, inst: Path):
     monkeypatch.setenv(updater.INSTALL_DIR_ENV, str(inst))
 
 
+_BIN_URL = "https://x/bin.zip"
+_THEMES_URL = "https://x/themes.zip"
+
+
+def _prime_release(monkeypatch, *, tag="v99.0.0", binary_zip=None, themes_zip=None, bin_digest="", themes_digest=""):
+    """Mock fetch_latest with both assets and a _download that serves each zip by URL.
+
+    A ``None`` zip means "download would write garbage" for that asset, so a
+    caller can exercise a corrupt/absent download without a real file.
+    """
+    monkeypatch.setattr(
+        updater,
+        "fetch_latest",
+        lambda *a, **k: {
+            "tag": tag,
+            "assets": {
+                updater.asset_name(): {"url": _BIN_URL, "digest": bin_digest},
+                updater.THEMES_ASSET: {"url": _THEMES_URL, "digest": themes_digest},
+            },
+        },
+    )
+    import shutil as _shutil
+
+    def fake_download(url, dest, timeout):
+        src = binary_zip if url == _BIN_URL else themes_zip
+        if src is None:
+            Path(dest).write_bytes(b"this is not a zip file")
+        else:
+            _shutil.copyfile(src, dest)
+        return True
+
+    monkeypatch.setattr(updater, "_download", fake_download)
+
+
 def test_do_update_none_when_current(monkeypatch, tmp_path):
     inst = _fake_install(tmp_path)
     _prime_frozen(monkeypatch, inst)
@@ -254,70 +305,51 @@ def test_do_update_none_when_current(monkeypatch, tmp_path):
     assert updater.do_update() is None
 
 
-def test_do_update_downloads_verifies_and_applies(monkeypatch, tmp_path):
+def test_do_update_downloads_verifies_and_applies_both(monkeypatch, tmp_path):
     inst = _fake_install(tmp_path)
     _prime_frozen(monkeypatch, inst)
 
-    zpath = _make_release_zip(tmp_path, binary_bytes=b"FRESH")
-    digest = updater._sha256(zpath)
-    name = updater.asset_name()
-    monkeypatch.setattr(
-        updater,
-        "fetch_latest",
-        lambda *a, **k: {"tag": "v99.0.0", "assets": {name: {"url": "https://x/zip", "digest": digest}}},
+    bin_zip = _make_binary_zip(tmp_path, binary_bytes=b"FRESH")
+    themes_zip = _make_themes_zip(tmp_path, theme_css="body{color:red}")
+    _prime_release(
+        monkeypatch,
+        binary_zip=bin_zip,
+        themes_zip=themes_zip,
+        bin_digest=updater._sha256(bin_zip),
+        themes_digest=updater._sha256(themes_zip),
     )
-
-    import shutil as _shutil
-
-    def fake_download(url, dest, timeout):
-        _shutil.copyfile(zpath, dest)
-        return True
-
-    monkeypatch.setattr(updater, "_download", fake_download)
 
     result = updater.do_update()
     assert result == (updater.__version__, "99.0.0")
     assert (inst / updater._binary_name()).read_bytes() == b"FRESH"
+    # themes refreshed alongside the binary
+    assert (inst / "themes" / "report.css").read_text() == "body{color:red}"
+    assert not (inst / "themes" / "old.css").exists()
 
 
 def test_do_update_checksum_mismatch_raises(monkeypatch, tmp_path):
     inst = _fake_install(tmp_path)
     _prime_frozen(monkeypatch, inst)
-    zpath = _make_release_zip(tmp_path)
-    name = updater.asset_name()
-    monkeypatch.setattr(
-        updater,
-        "fetch_latest",
-        lambda *a, **k: {"tag": "v99.0.0", "assets": {name: {"url": "https://x/zip", "digest": "deadbeef"}}},
-    )
-
-    import shutil as _shutil
-
-    monkeypatch.setattr(updater, "_download", lambda url, dest, timeout: bool(_shutil.copyfile(zpath, dest)) or True)
+    bin_zip = _make_binary_zip(tmp_path)
+    themes_zip = _make_themes_zip(tmp_path)
+    _prime_release(monkeypatch, binary_zip=bin_zip, themes_zip=themes_zip, bin_digest="deadbeef")
     with pytest.raises(updater.UpdateError, match="checksum mismatch"):
         updater.do_update()
 
 
 def test_do_update_bad_zip_raises_cleanly(monkeypatch, tmp_path):
-    """A corrupt download (BadZipFile) surfaces as a clean UpdateError, not a traceback."""
+    """A corrupt themes download (BadZipFile) surfaces as a clean UpdateError."""
     inst = _fake_install(tmp_path)
     _prime_frozen(monkeypatch, inst)
-    name = updater.asset_name()
-    monkeypatch.setattr(
-        updater,
-        "fetch_latest",
-        lambda *a, **k: {"tag": "v99.0.0", "assets": {name: {"url": "https://x/zip", "digest": ""}}},
-    )
-
-    def write_garbage(url, dest, timeout):
-        Path(dest).write_bytes(b"this is not a zip file")
-        return True
-
-    monkeypatch.setattr(updater, "_download", write_garbage)
+    bin_zip = _make_binary_zip(tmp_path)
+    # themes_zip=None -> _download writes garbage for the themes asset; themes are
+    # applied first, so extraction fails there before any binary swap.
+    _prime_release(monkeypatch, binary_zip=bin_zip, themes_zip=None)
     with pytest.raises(updater.UpdateError, match="could not apply the update"):
         updater.do_update()
-    # The pre-existing binary is untouched (validation/extraction failed before any swap).
+    # Nothing swapped: the pre-existing binary and themes are untouched.
     assert (inst / updater._binary_name()).read_bytes() == b"OLD-BINARY"
+    assert (inst / "themes" / "old.css").read_text() == "old"
 
 
 def test_do_update_no_asset_for_platform_raises(monkeypatch, tmp_path):
@@ -325,6 +357,19 @@ def test_do_update_no_asset_for_platform_raises(monkeypatch, tmp_path):
     _prime_frozen(monkeypatch, inst)
     monkeypatch.setattr(updater, "fetch_latest", lambda *a, **k: {"tag": "v99.0.0", "assets": {}})
     with pytest.raises(updater.UpdateError, match="no asset for this platform"):
+        updater.do_update()
+
+
+def test_do_update_no_themes_asset_raises(monkeypatch, tmp_path):
+    """A release with the binary but no themes asset is a reportable error."""
+    inst = _fake_install(tmp_path)
+    _prime_frozen(monkeypatch, inst)
+    monkeypatch.setattr(
+        updater,
+        "fetch_latest",
+        lambda *a, **k: {"tag": "v99.0.0", "assets": {updater.asset_name(): {"url": _BIN_URL, "digest": ""}}},
+    )
+    with pytest.raises(updater.UpdateError, match=updater.THEMES_ASSET):
         updater.do_update()
 
 
@@ -339,15 +384,77 @@ def test_do_update_offline_raises(monkeypatch, tmp_path):
 def test_do_update_not_writable_raises(monkeypatch, tmp_path):
     inst = _fake_install(tmp_path)
     _prime_frozen(monkeypatch, inst)
-    name = updater.asset_name()
-    monkeypatch.setattr(
-        updater,
-        "fetch_latest",
-        lambda *a, **k: {"tag": "v99.0.0", "assets": {name: {"url": "https://x/zip", "digest": ""}}},
-    )
+    _prime_release(monkeypatch, binary_zip=_make_binary_zip(tmp_path), themes_zip=_make_themes_zip(tmp_path))
     monkeypatch.setattr(updater.os, "access", lambda *a, **k: False)
     with pytest.raises(updater.UpdateError, match="not writable"):
         updater.do_update()
+
+
+# ── ensure_themes (download-on-missing) ──
+
+
+def test_ensure_themes_downloads_and_applies(monkeypatch, tmp_path):
+    inst = _fake_install(tmp_path)
+    themes_zip = _make_themes_zip(tmp_path, theme_css="body{color:blue}")
+    seen_tag = {}
+
+    def fake_fetch_release(tag, repo=updater.REPO, timeout=updater._HTTP_TIMEOUT):
+        seen_tag["tag"] = tag
+        return {"tag": tag, "assets": {updater.THEMES_ASSET: {"url": _THEMES_URL, "digest": updater._sha256(themes_zip)}}}
+
+    monkeypatch.setattr(updater, "fetch_release", fake_fetch_release)
+
+    import shutil as _shutil
+
+    monkeypatch.setattr(updater, "_download", lambda url, dest, timeout: bool(_shutil.copyfile(themes_zip, dest)) or True)
+
+    updater.ensure_themes(inst)
+
+    assert (inst / "themes" / "report.css").read_text() == "body{color:blue}"
+    assert not (inst / "themes" / "old.css").exists()
+    # fetched from the release matching this binary's own version
+    assert seen_tag["tag"] == f"v{updater._norm(updater.__version__)}"
+
+
+def test_ensure_themes_offline_raises(monkeypatch, tmp_path):
+    inst = _fake_install(tmp_path)
+    monkeypatch.setattr(updater, "fetch_release", lambda *a, **k: None)
+    with pytest.raises(updater.UpdateError, match="could not reach"):
+        updater.ensure_themes(inst)
+
+
+def test_ensure_themes_no_asset_raises(monkeypatch, tmp_path):
+    inst = _fake_install(tmp_path)
+    monkeypatch.setattr(updater, "fetch_release", lambda *a, **k: {"tag": "v1.2.3", "assets": {}})
+    with pytest.raises(updater.UpdateError, match=updater.THEMES_ASSET):
+        updater.ensure_themes(inst)
+
+
+def test_ensure_themes_not_writable_raises(monkeypatch, tmp_path):
+    inst = _fake_install(tmp_path)
+    monkeypatch.setattr(
+        updater,
+        "fetch_release",
+        lambda *a, **k: {"tag": "v1.2.3", "assets": {updater.THEMES_ASSET: {"url": _THEMES_URL, "digest": ""}}},
+    )
+    monkeypatch.setattr(updater.os, "access", lambda *a, **k: False)
+    with pytest.raises(updater.UpdateError, match="not writable"):
+        updater.ensure_themes(inst)
+
+
+def test_ensure_themes_checksum_mismatch_raises(monkeypatch, tmp_path):
+    inst = _fake_install(tmp_path)
+    themes_zip = _make_themes_zip(tmp_path)
+    monkeypatch.setattr(
+        updater,
+        "fetch_release",
+        lambda *a, **k: {"tag": "v1.2.3", "assets": {updater.THEMES_ASSET: {"url": _THEMES_URL, "digest": "deadbeef"}}},
+    )
+    import shutil as _shutil
+
+    monkeypatch.setattr(updater, "_download", lambda url, dest, timeout: bool(_shutil.copyfile(themes_zip, dest)) or True)
+    with pytest.raises(updater.UpdateError, match="checksum mismatch"):
+        updater.ensure_themes(inst)
 
 
 # ── command wrappers ──
@@ -386,6 +493,33 @@ def test_cmd_check_current(monkeypatch, capsys):
     monkeypatch.setattr(updater, "fetch_latest", lambda *a, **k: {"tag": f"v{updater.__version__}", "assets": {}})
     assert updater._cmd_check() == 0
     assert "up to date" in capsys.readouterr().out
+
+
+def test_cmd_themes_not_frozen(monkeypatch, capsys):
+    monkeypatch.setattr(updater, "is_frozen", lambda: False)
+    assert updater.main(["--themes"]) == 0
+    assert "ship with the package" in capsys.readouterr().out
+
+
+def test_cmd_themes_frozen_installs(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(updater, "is_frozen", lambda: True)
+    monkeypatch.setenv(updater.INSTALL_DIR_ENV, str(tmp_path))
+    called = {}
+    monkeypatch.setattr(updater, "ensure_themes", lambda *a, **k: called.setdefault("yes", True))
+    assert updater.main(["--themes"]) == 0
+    assert called["yes"]
+    assert "themes for" in capsys.readouterr().out
+
+
+def test_cmd_themes_frozen_error_exit_1(monkeypatch, capsys):
+    monkeypatch.setattr(updater, "is_frozen", lambda: True)
+
+    def boom(*a, **k):
+        raise updater.UpdateError("offline")
+
+    monkeypatch.setattr(updater, "ensure_themes", boom)
+    assert updater.main(["--themes"]) == 1
+    assert "offline" in capsys.readouterr().err
 
 
 # ── auto path ──

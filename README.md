@@ -37,9 +37,9 @@ into styled, standalone HTML.
 ## Install
 
 **Install script (recommended).** One command downloads the latest release for
-your platform, verifies its SHA-256, unpacks the binary and its `themes/`
-folder, and puts `mdtohtml` on your PATH (or tells you how to add it) — no sudo
-and no Python.
+your platform — the themeless binary plus the separate themes asset — verifies
+each one's SHA-256, unpacks the binary and its `themes/` folder, and puts
+`mdtohtml` on your PATH (or tells you how to add it) — no sudo and no Python.
 
 ```bash
 # Linux
@@ -55,9 +55,11 @@ Both are safe to re-run and honour `MDTOHTML_INSTALL_DIR` (plus
 `MDTOHTML_BIN_DIR` on Linux). Prebuilt binaries are published for Linux and
 Windows (x86_64); on **macOS**, build from source (below) or use pipx.
 
-**Download a release manually.** Grab the zip for your platform from the
-[Releases](https://github.com/MatLomax/mdtohtml/releases) page and extract it
-as-is — the executable and its `themes/` folder must sit side by side:
+**Download a release manually.** From the
+[Releases](https://github.com/MatLomax/mdtohtml/releases) page grab two assets —
+the binary zip for your platform (`mdtohtml-<os>-x86_64.zip`) and the themes zip
+(`mdtohtml-themes.zip`) — and extract both into one directory so the executable
+and its `themes/` folder sit side by side:
 
 ```
 /somewhere/
@@ -69,8 +71,10 @@ as-is — the executable and its `themes/` folder must sit side by side:
     report.css
 ```
 
-Running the bare executable with no `themes/` folder next to it (or an empty
-one) fails with a clear error instead of converting anything.
+The binary itself is themeless. Converting with no `themes/` folder next to it
+(and no `--themes-dir`) offers to download the matching themes on an interactive
+terminal, or prints `mdtohtml update --themes` to fetch them; `--version`, `-h`,
+and `update` work with no themes present.
 
 **With pipx (needs Python).**
 `pipx install git+https://github.com/MatLomax/mdtohtml` installs the `mdtohtml`
@@ -86,12 +90,15 @@ A release-binary install updates itself in place:
 ```bash
 mdtohtml update           # upgrade to the latest release if newer
 mdtohtml update --check   # just report whether a newer release exists
+mdtohtml update --themes  # (re)download this release's themes into place
 mdtohtml update --force   # reinstall the latest release
 ```
 
-`update` downloads this platform's release zip, verifies its SHA-256, and
-atomically replaces the binary and its `themes/` folder — safe to run even while
-the tool is in use. A pipx/pip install is upgraded with pipx/pip instead.
+`update` downloads this platform's binary asset and the themes asset, verifies
+each one's SHA-256, and atomically replaces the binary and its `themes/` folder
+(themes first, so an interruption never leaves a new binary against stale
+themes) — safe to run even while the tool is in use. A pipx/pip install is
+upgraded with pipx/pip instead.
 
 ## Usage
 
@@ -119,8 +126,10 @@ Run `mdtohtml --help` for the full flag list.
 
 ## Themes
 
-Themes are plain CSS files. To add or customize one, drop a `.css` file into
-the `themes/` folder next to the binary:
+Themes are plain CSS files, distributed as a separate release asset
+(`mdtohtml-themes.zip`) and installed into a `themes/` folder next to the binary.
+If they are missing, `mdtohtml update --themes` (re)installs them. To add or
+customize one, drop a `.css` file into that `themes/` folder:
 
 ```
 /somewhere/
@@ -327,12 +336,15 @@ scripts/build_binary.sh
 ```
 
 `scripts/build_binary.sh` wipes `build/` and `dist/`, runs PyInstaller against
-`mdtohtml.spec` (onefile), and then assembles the release zip that ships to
-users: `dist/mdtohtml-linux-x86_64.zip` (or `dist/mdtohtml-windows-x86_64.zip`
-on Windows), containing the executable, a `themes/` folder, and the `LICENSE`
-and `THIRD-PARTY-LICENSES` files side by side. Theme CSS is **not** baked into
-the executable — only the KaTeX and mermaid rendering assets (and the engines
-that drive them) are — so the `themes/` folder must travel with the binary.
+`mdtohtml.spec` (onefile), and then assembles the two release assets that ship
+to users: a themeless binary zip (`dist/mdtohtml-linux-x86_64.zip`, or
+`dist/mdtohtml-windows-x86_64.zip` on Windows) containing the executable plus
+the `LICENSE` and `THIRD-PARTY-LICENSES` files, and an OS-independent themes zip
+(`dist/mdtohtml-themes.zip`) containing the `themes/` folder. Theme CSS is
+**not** baked into the executable — only the KaTeX and mermaid rendering assets
+(and the engines that drive them) are — so themes ship as their own asset that
+the binary installs on demand (`mdtohtml update --themes`) and the install
+scripts unpack beside the binary.
 
 The Linux binary is dynamically linked against the glibc of the machine that
 built it, so it runs on that glibc version or newer. It does not run on musl
@@ -341,8 +353,9 @@ container; for musl, build on the target musl system.
 
 Cross-compilation is not possible with PyInstaller, so the Windows binary is
 built on Windows. `.github/workflows/build.yml` builds and smoke-tests the
-binary on both `ubuntu-latest` and `windows-latest` and uploads the zipped
-binary + `themes/` as an artifact for each.
+binary on both `ubuntu-latest` and `windows-latest`, uploads each platform's
+themeless binary zip, and publishes the shared `mdtohtml-themes.zip` once from
+the Linux leg.
 
 ## License
 

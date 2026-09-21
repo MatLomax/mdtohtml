@@ -120,7 +120,37 @@ jobs:
           }
           Write-Host "version OK ($reported matches tag $env:GITHUB_REF_NAME)"
 
-      - name: Package release zip (bash)
+      # The themeless binary, run with no themes/ beside it and no --themes-dir,
+      # must fail cleanly (not crash) and point at `update --themes`. Runs
+      # non-interactively (no TTY) so it never blocks; guards the themeless-binary
+      # + download-on-missing path that the release now depends on.
+      - name: Smoke test themeless binary (bash)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -uo pipefail
+          printf '# T\n\nhello\n' > bare.md
+          out="$(dist/mdtohtml bare.md -o bare.html < /dev/null 2>&1)"; code=$?
+          echo "$out"
+          if [ "$code" -eq 0 ]; then echo "ERROR: themeless convert unexpectedly succeeded" >&2; exit 1; fi
+          echo "$out" | grep -q 'update --themes' || { echo "ERROR: no themes-fetch guidance shown" >&2; exit 1; }
+          echo "themeless binary OK (clean failure + fetch guidance)"
+
+      - name: Smoke test themeless binary (pwsh)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "# T`n`nhello`n" | Set-Content -NoNewline bare.md
+          $out = (& "dist/mdtohtml.exe" bare.md -o bare.html *>&1 | Out-String)
+          Write-Host $out
+          if ($LASTEXITCODE -eq 0) { Write-Error "themeless convert unexpectedly succeeded" }
+          if ($out -notmatch 'update --themes') { Write-Error "no themes-fetch guidance shown" }
+          Write-Host "themeless binary OK (clean failure + fetch guidance)"
+
+      # The binary zip carries only the executable (themeless). Themes ship as a
+      # separate, OS-independent asset (mdtohtml-themes.zip), built once on the
+      # Linux leg; the binary downloads it on demand when no themes are present.
+      - name: Package release zips (bash)
         if: runner.os != 'Windows'
         shell: bash
         run: |
@@ -129,9 +159,15 @@ jobs:
           rm -rf "$STAGE"
           mkdir -p "$STAGE"
           cp dist/mdtohtml "$STAGE/"
-          cp -r mdtohtml/themes "$STAGE/themes"
           ( cd "$STAGE" && zip -qr "../mdtohtml-linux-x86_64.zip" . )
           rm -rf "$STAGE"
+          # Themes asset: a themes/ folder, built once here (it is not per-OS).
+          TSTAGE=dist/themes-stage
+          rm -rf "$TSTAGE"
+          mkdir -p "$TSTAGE"
+          cp -r mdtohtml/themes "$TSTAGE/themes"
+          ( cd "$TSTAGE" && zip -qr "../mdtohtml-themes.zip" . )
+          rm -rf "$TSTAGE"
 
       - name: Package release zip (pwsh)
         if: runner.os == 'Windows'
@@ -142,7 +178,6 @@ jobs:
           Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Path $stage | Out-Null
           Copy-Item "dist/mdtohtml.exe" "$stage/"
-          Copy-Item -Recurse "mdtohtml/themes" "$stage/themes"
           Compress-Archive -Path "$stage/*" -DestinationPath "dist/mdtohtml-windows-x86_64.zip" -Force
           Remove-Item -Recurse -Force $stage
 
