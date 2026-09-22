@@ -550,7 +550,7 @@ blockquote p {
 }
 
 /* @section: callouts
-   Obsidian callouts render as python-markdown admonitions
+   Callouts render as python-markdown admonitions
    (``.admonition <type>`` + ``.admonition-title``). The base card mirrors
    report_template's ``.note``; per-type accents colour the rule and title. */
 .admonition {

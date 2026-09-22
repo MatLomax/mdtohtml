@@ -47,7 +47,7 @@ like `3:1` is untouched.
 > A blockquote for a pulled-out remark. It is distinct from a callout and
 > renders as a plain quotation.
 
-Footnotes and Obsidian wikilinks resolve to the `.html` sibling of each page:
+Footnotes and wikilinks resolve to the `.html` sibling of each page:
 
 ```markdown
 A footnote reference[^1]. A wikilink [[Architecture Overview]], one with custom
@@ -133,7 +133,7 @@ A sixth-level heading.
 ^ Callouts
 ## Callout cards
 
-An Obsidian callout is `> [!type]` with optional continuation lines. The text
+A callout is `> [!type]` with optional continuation lines. The text
 after the type is a title: omit it for the capitalised default, or write your own
 to override it. A `keypoint` takes no title at all.
 

@@ -23,7 +23,7 @@ from mdtohtml.converter import (
     preprocess_chips,
     preprocess_footer,
     preprocess_keyed_tables,
-    preprocess_obsidian_callouts,
+    preprocess_callouts,
     preprocess_section_kickers,
     preprocess_wikilinks,
     render_html,
@@ -117,38 +117,38 @@ class TestMdToHtml:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# preprocess_obsidian_callouts
+# preprocess_callouts
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class TestPreprocessObsidianCallouts:
-    def test_preprocess_obsidian_callouts_basic(self) -> None:
+class TestPreprocessCallouts:
+    def test_preprocess_callouts_basic(self) -> None:
         md = "> [!note]\n> Some content.\n"
-        result = preprocess_obsidian_callouts(md)
+        result = preprocess_callouts(md)
         assert "!!! note" in result
         assert "Some content." in result
 
-    def test_preprocess_obsidian_callouts_with_title(self) -> None:
+    def test_preprocess_callouts_with_title(self) -> None:
         md = "> [!warning] Watch Out\n> Be careful.\n"
-        result = preprocess_obsidian_callouts(md)
+        result = preprocess_callouts(md)
         assert '!!! warning "Watch Out"' in result
         assert "Be careful." in result
 
-    def test_preprocess_obsidian_callouts_multiline(self) -> None:
+    def test_preprocess_callouts_multiline(self) -> None:
         md = "> [!tip] Helpful\n> Line one.\n> Line two.\n"
-        result = preprocess_obsidian_callouts(md)
+        result = preprocess_callouts(md)
         assert '!!! tip "Helpful"' in result
         assert "Line one." in result
         assert "Line two." in result
 
     def test_non_callout_blockquote_unchanged(self) -> None:
         md = "> Normal blockquote\n"
-        result = preprocess_obsidian_callouts(md)
+        result = preprocess_callouts(md)
         assert result.strip() == md.strip()
 
     def test_ignore_single_callout_type(self) -> None:
         md = "> [!info] Details\n> Some info content.\n"
-        result = preprocess_obsidian_callouts(md, ignore_callouts={"info"})
+        result = preprocess_callouts(md, ignore_callouts={"info"})
         assert "info" not in result
         assert "Some info content." not in result
 
@@ -158,7 +158,7 @@ class TestPreprocessObsidianCallouts:
             "> [!tip] T1\n> Tip.\n\n"
             "> [!warning] W1\n> Warning.\n"
         )
-        result = preprocess_obsidian_callouts(md, ignore_callouts={"info", "tip"})
+        result = preprocess_callouts(md, ignore_callouts={"info", "tip"})
         assert "Info." not in result
         assert "Tip." not in result
         assert '!!! warning "W1"' in result
@@ -166,13 +166,13 @@ class TestPreprocessObsidianCallouts:
 
     def test_ignore_none_converts_all(self) -> None:
         md = "> [!info] Details\n> Content.\n"
-        result = preprocess_obsidian_callouts(md, ignore_callouts=None)
+        result = preprocess_callouts(md, ignore_callouts=None)
         assert '!!! info "Details"' in result
         assert "Content." in result
 
     def test_ignore_case_insensitive_in_source(self) -> None:
         md = "> [!INFO] Details\n> Content.\n"
-        result = preprocess_obsidian_callouts(md, ignore_callouts={"info"})
+        result = preprocess_callouts(md, ignore_callouts={"info"})
         assert "Content." not in result
 
 

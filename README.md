@@ -1,7 +1,7 @@
 # mdtohtml
 
-A self-contained command-line tool that converts Obsidian-compatible Markdown
-into styled, standalone HTML.
+A self-contained command-line tool that converts extended Markdown into styled,
+standalone HTML.
 
 [![build](https://github.com/MatLomax/mdtohtml/actions/workflows/build.yml/badge.svg)](https://github.com/MatLomax/mdtohtml/actions/workflows/build.yml)
 [![test](https://github.com/MatLomax/mdtohtml/actions/workflows/test.yml/badge.svg)](https://github.com/MatLomax/mdtohtml/actions/workflows/test.yml)
@@ -10,7 +10,7 @@ into styled, standalone HTML.
 
 - **Single self-contained binary.** No server, no API, no network call, and
   no Node.js or Python required at runtime once built.
-- **Obsidian-compatible Markdown**: callouts (`> [!note]`), wikilinks
+- **Extended Markdown**: callouts (`> [!note]`), wikilinks
   (`[[Page]]`, resolved to the `.html` sibling of each page), task lists,
   tables, footnotes, syntax highlighting, `~~del~~`, `==mark==`, and an
   optional table-of-contents sidebar.
@@ -283,7 +283,7 @@ notices. The aggregate covers:
 
 0. A leading `---` front-matter block, if present, is split off to build the
    report hero and set the document `<title>`; the rest is the markdown body.
-1. Markdown (with Obsidian callouts and wikilinks preprocessed) is converted
+1. Markdown (with callouts and wikilinks preprocessed) is converted
    to HTML via `markdown` + `pymdown-extensions`; ` ```mermaid ` fences render
    to inline SVG, held aside behind a placeholder.
 2. Math is pre-rendered to static KaTeX markup.

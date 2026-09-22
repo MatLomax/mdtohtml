@@ -70,7 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--ignore",
         default=None,
         help=(
-            "Comma-separated list of Obsidian callout types to exclude "
+            "Comma-separated list of callout types to exclude "
             'from output (e.g. --ignore="info,tip").'
         ),
     )

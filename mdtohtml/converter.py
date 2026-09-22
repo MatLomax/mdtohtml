@@ -1,8 +1,9 @@
 """Core conversion library for mdtohtml.
 
-Converts Obsidian-compatible Markdown to styled, self-contained HTML with
-themeable CSS. Math is pre-rendered to static KaTeX markup at convert time and
-styled by the bundled KaTeX CSS/fonts; ```mermaid``` fences are pre-rendered to
+Converts Markdown -- with callouts, wikilinks, and other extensions -- to
+styled, self-contained HTML with themeable CSS. Math is pre-rendered to static
+KaTeX markup at convert time and styled by the bundled KaTeX CSS/fonts;
+```mermaid``` fences are pre-rendered to
 inline SVG. Neither ships a JavaScript engine or makes a network request, and a
 document without math or diagrams carries none of their bytes.
 
@@ -59,7 +60,7 @@ HTML_TEMPLATE = """\
 """
 
 
-# ── Obsidian Callout Preprocessor ──
+# ── Callout Preprocessor ──
 
 _CALLOUT_TYPES = {
     "note",
@@ -79,19 +80,19 @@ _CALLOUT_TYPES = {
     "keypoint",
 }
 
-# Matches the opening line of an Obsidian callout: > [!type] Optional Title
+# Matches the opening line of a callout: > [!type] Optional Title
 _CALLOUT_RE = re.compile(
     r"^>\s*\[!(" + "|".join(_CALLOUT_TYPES) + r")\]\s*(.*)?$",
     re.IGNORECASE,
 )
 
 
-def preprocess_obsidian_callouts(
+def preprocess_callouts(
     md_text: str,
     *,
     ignore_callouts: set[str] | None = None,
 ) -> str:
-    """Convert Obsidian callout syntax to Python-Markdown admonition syntax.
+    """Convert callout syntax (``> [!type]``) to Python-Markdown admonition syntax.
 
     Converts:
         > [!note] Optional Title
@@ -232,13 +233,13 @@ def _restore_code(text: str, placeholders: list[str]) -> str:
 # ── Wikilink Preprocessing ──
 
 
-# Matches Obsidian wikilinks: [[Page]] or [[Page|display text]]
+# Matches wikilinks: [[Page]] or [[Page|display text]]
 # Also handles headings: [[Page#heading]] or [[Page#heading|text]]
 _WIKILINK_RE = re.compile(r"\[\[([^\]|]+?)(?:\|([^\]]+?))?\]\]")
 
 
 def preprocess_wikilinks(md_text: str) -> str:
-    """Convert Obsidian ``[[wikilink]]`` syntax to standard Markdown links.
+    """Convert ``[[wikilink]]`` syntax to standard Markdown links.
 
     Converts:
         ``[[Some Page]]``          → ``[Some Page](Some Page.html)``
@@ -964,7 +965,7 @@ def md_to_html(
     """Convert markdown text to an HTML body fragment.
 
     Full pipeline:
-    1. Obsidian callout preprocessing
+    1. Callout preprocessing
     1a. Wikilink preprocessing (``[[Page]]`` → ``[Page](Page.html)``)
     1b. Chip preprocessing (``:key[label]`` → ``<span class="pchip key">``)
     2. Markdown conversion with all extensions (```mermaid``` fences render to
@@ -987,12 +988,12 @@ def md_to_html(
 
     mermaid_render.begin_conversion(dark=dark, adaptive=adaptive)
     try:
-        # Step 1: Preprocess Obsidian callouts
-        md_text = preprocess_obsidian_callouts(
+        # Step 1: Preprocess callouts
+        md_text = preprocess_callouts(
             md_text, ignore_callouts=ignore_callouts
         )
 
-        # Step 1a: Convert Obsidian wikilinks to standard Markdown links
+        # Step 1a: Convert wikilinks to standard Markdown links
         md_text = preprocess_wikilinks(md_text)
 
         # Step 1b: Convert inline ``:key[label]`` chips to coloured spans

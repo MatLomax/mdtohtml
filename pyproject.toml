@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mdtohtml"
 dynamic = ["version"]
-description = "Self-contained Obsidian-compatible Markdown to styled HTML converter with pre-rendered KaTeX math and mermaid diagrams."
+description = "Self-contained Markdown to styled HTML converter with callouts, wikilinks, pre-rendered KaTeX math, and mermaid diagrams."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "THIRD-PARTY-LICENSES"]
 authors = [{ name = "Mathieu Lomax" }]
-keywords = ["markdown", "html", "converter", "katex", "mermaid", "obsidian", "cli", "pyinstaller"]
+keywords = ["markdown", "html", "converter", "katex", "mermaid", "callouts", "cli", "pyinstaller"]
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
