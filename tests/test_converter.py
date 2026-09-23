@@ -2106,6 +2106,67 @@ class TestThemeCodeWrap:
         assert "min-width: 0" in rule
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Report theme: nested TOC entries
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _css_rule(css: str, selector: str) -> str:
+    """Return the declaration body of the first rule whose selector is *selector*."""
+    start = css.index(selector + " {")
+    return css[start: css.index("}", start)]
+
+
+class TestReportThemeNestedToc:
+    def test_nested_groups_hang_off_a_guide_rail(self) -> None:
+        rule = _css_rule(load_theme_css("report"), "#toc ul ul")
+        assert "border-left: 1px solid var(--line)" in rule
+
+    def test_nested_entries_drop_the_kicker_type(self) -> None:
+        css = load_theme_css("report")
+        top = _css_rule(css, "#toc > ul > li > a")
+        assert "text-transform: uppercase" in top
+        nested = _css_rule(css, "#toc ul ul a")
+        # Sentence case in the body sans: the uppercase mono kicker type is only
+        # set on the top-level selector, never on the nested one.
+        assert "text-transform" not in nested
+        assert "var(--mono)" not in nested
+
+    def test_level_three_keeps_aa_text_colour(self) -> None:
+        # Deeper entries step down in size only: ``--ink-faint`` is under 4.5:1
+        # on the light panel, so level three must not take it.
+        rule = _css_rule(load_theme_css("report"), "#toc ul ul ul a")
+        assert "color" not in rule
+
+    def test_active_entry_text_clears_aa_on_its_ground(self) -> None:
+        from mdtohtml import colour
+
+        css = load_theme_css("report")
+        assert "color: var(--accent-ink)" in _css_rule(css, "#toc a.active")
+        light = css[: css.index("@media (prefers-color-scheme: dark)")]
+        dark = css[css.index("@media (prefers-color-scheme: dark)"):]
+
+        def token(block: str, name: str) -> str:
+            return re.search(rf"{name}:\s*(#[0-9a-fA-F]{{3,6}})\b", block).group(1)
+
+        def ratio(a: str, b: str) -> float:
+            la = colour.relative_luminance(colour.parse_hex(a))
+            lb = colour.relative_luminance(colour.parse_hex(b))
+            hi, lo = max(la, lb), min(la, lb)
+            return (hi + 0.05) / (lo + 0.05)
+
+        for block in (light, dark):
+            ink = token(block, "--accent-ink")
+            # Top-level active sits on the tint; nested active on the panel.
+            assert ratio(ink, token(block, "--accent-soft")) >= 4.5
+            assert ratio(ink, token(block, "--panel")) >= 4.5
+
+    def test_active_nested_entry_marks_its_rail_segment(self) -> None:
+        rule = _css_rule(load_theme_css("report"), "#toc ul ul a.active")
+        assert "background: none" in rule
+        assert "border-left-color: var(--accent)" in rule
+
+
 class TestReportThemeKeypointEdge:
     def test_keypoint_edge_clears_non_text_contrast_in_both_schemes(self) -> None:
         """The keypoint card's 1px edge is its only outline, so it must meet the

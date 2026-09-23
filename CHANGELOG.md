@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so the numbers stay aligned), works in fences nested in lists and callouts,
   and is ignored on `mermaid` fences.
 
+### Changed
+
+- The `report` theme's table-of-contents sidebar styles nested entries to sit
+  under their kicker-style parents: sentence case in the body font, hung off a
+  thin guide rail, with deeper levels a step smaller. The active nested entry
+  marks its own segment of the rail in the accent colour instead of taking the
+  full-width tint, which stays on top-level entries. Active entry text now uses
+  a darker amber that clears WCAG AA contrast in light mode.
+
 ### Fixed
 
 - A code block with an `#id` in its attributes kept its `title=` as a bare

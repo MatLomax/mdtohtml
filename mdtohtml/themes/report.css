@@ -18,6 +18,7 @@
     --accent-soft: #f7ecd6;
     --accent-line: #e6c78d;
     --accent-edge: #bf7f26;
+    --accent-ink: #9c5b00;
     --shadow: 0 1px 2px rgba(20, 24, 34, 0.06), 0 8px 26px rgba(20, 24, 34, 0.08);
     --mono: ui-monospace, "Cascadia Code", "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
@@ -37,6 +38,7 @@
         --accent-soft: #2e2415;
         --accent-line: #4a3a1c;
         --accent-edge: #8f6a2c;
+        --accent-ink: #e0a047;
         --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.45);
     }
 }
@@ -1415,13 +1417,30 @@ hr {
     color: var(--ink-faint);
 }
 
+/* Nested entries are the headings under a kicker, so they drop the kicker's
+   uppercase mono for the body's sans in sentence case. Each nested group hangs
+   off a thin guide rail lined up under its parent's label, so the hierarchy
+   reads as a tree; deeper levels step down in size and weight. */
+#toc ul ul {
+    margin: 0.1rem 0 0.4rem calc(1.25rem + 2px);
+    border-left: 1px solid var(--line);
+}
+
 #toc ul ul a {
-    padding-left: 2.1rem;
-    font-size: 0.78rem;
+    margin-left: -1px;
+    padding: 0.3rem 1.25rem 0.3rem 0.8rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+#toc ul ul ul {
+    margin: 0 0 0.2rem 0.8rem;
 }
 
 #toc ul ul ul a {
-    padding-left: 2.95rem;
+    font-size: 0.78rem;
+    font-weight: 400;
 }
 
 #toc a:hover {
@@ -1435,8 +1454,21 @@ hr {
 #toc a.active {
     background: var(--accent-soft);
     border-left-color: var(--accent);
-    color: var(--accent);
+    /* ``--accent-ink`` is the accent darkened to clear AA as text on the tint. */
+    color: var(--accent-ink);
     font-weight: 600;
+}
+
+/* A nested entry marks its own segment of the guide rail instead of taking the
+   full-width tint, so the top-level section stays the strongest marker. */
+#toc ul ul a:hover {
+    background: none;
+    border-left-color: var(--ink-faint);
+}
+
+#toc ul ul a.active {
+    background: none;
+    border-left-color: var(--accent);
 }
 
 /* Centre the text column in the space beside the sidebar. The gutter is padding
@@ -1517,6 +1549,11 @@ body:has(#toc) > main {
         padding: 0;
         break-after: page;
         page-break-after: always;
+    }
+
+    /* The guide rails keep a light paper grey whatever the screen scheme. */
+    #toc ul ul {
+        border-left-color: #d9dee5;
     }
 
     /* No interactive control on paper; the full list always prints. */
