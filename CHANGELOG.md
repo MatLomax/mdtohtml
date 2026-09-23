@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   id). A `{-toc}` anywhere other than the end of a heading line is left as
   literal text.
 
+### Changed
+
+- The keyed-table marker is now `{keyed}` (was `{.keyed}`), lining up with the
+  `{-toc}` marker under one grammar: bare `{name}` opts a block into a
+  behaviour, `{-name}` opts it out. Documents using the old `{.keyed}` marker
+  must move to `{keyed}`.
+
 ## [0.3.1] - 2026-09-21
 
 ### Fixed

@@ -273,18 +273,18 @@ Tables render inside a card, wrapping to fit the content column.
 
 ### A keyed table with chips
 
-A `{.keyed}` line above a table styles its first column as an accent key, and
+A `{keyed}` line above a table styles its first column as an accent key, and
 status cells stay expressive with chips:
 
 ```markdown
-{.keyed}
+{keyed}
 | Component | Owner | Status |
 |-----------|-------|--------|
 | Math (KaTeX SSR) | core | :green[shipped] |
 | Report theme | ui | :blue[in review] |
 ```
 
-{.keyed}
+{keyed}
 | Component | Owner | Status | Notes |
 |-----------|-------|--------|-------|
 | Math (KaTeX SSR) | core | :green[shipped] | No JS engine in output |
