@@ -385,6 +385,23 @@ pre code {
     margin: 0;
 }
 
+/* A ``wrap`` fence (```` ```python {wrap} ````) soft-wraps long lines at the
+   panel edge instead of scrolling horizontally; an unbreakable run (a URL, a
+   hash) breaks anywhere rather than overflowing. */
+.highlight.wrap pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow-x: visible;
+}
+
+/* A wrapped block's ``linenums`` are inline, one number per source line, drawn
+   from ``data-linenos`` so they stay out of a copied selection. The muted tone
+   still clears AA on the code panel. */
+.highlight.wrap .linenos[data-linenos]::before {
+    content: attr(data-linenos);
+    color: #5c6b6b;
+}
+
 /* Pygments token classes -- teal-influenced palette */
 .highlight .k,
 .highlight .kn,

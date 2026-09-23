@@ -12,7 +12,11 @@ standalone HTML.
   no Node.js or Python required at runtime once built.
 - **Extended Markdown**: callouts (`> [!note]`), wikilinks
   (`[[Page]]`, resolved to the `.html` sibling of each page), task lists,
-  tables, footnotes, syntax highlighting, `~~del~~`, `==mark==`, and an
+  tables, footnotes, syntax highlighting (add `{wrap}` after a fence's
+  language, e.g. ` ```python {wrap} `, to soft-wrap long lines instead of
+  scrolling; alongside other options write a bare `wrap`, e.g.
+  ` ```{.python title="x" wrap} ` or ` ```python linenums="1" wrap `),
+  `~~del~~`, `==mark==`, and an
   optional table-of-contents sidebar (append `{-toc}` to a heading to keep it
   out of the sidebar).
 - **Themeable** via drop-in CSS files — add a theme without rebuilding

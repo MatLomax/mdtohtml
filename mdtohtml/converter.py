@@ -12,6 +12,7 @@ No HTTP, no CLI, no file writing. Callers decide what to do with the output.
 
 from __future__ import annotations
 
+import functools
 import html as _html
 import re
 import sys
@@ -727,7 +728,8 @@ def _wrap_tables(html: str) -> str:
 # ``.filename`` span an author wrote in prose. The non-greedy body match is safe
 # because an escaped ``</span>`` inside a title reads ``&lt;/span&gt;``.
 _FILENAME_RE = re.compile(
-    r'(<div class="highlight">)<span class="filename">(.*?)</span>', re.S
+    r'(<div (?:id="[^"]*" )?class="(?:[\w-]+ )*highlight">)<span class="filename">(.*?)</span>',
+    re.S,
 )
 
 
@@ -786,6 +788,92 @@ def _fix_hll_line_breaks(html: str) -> str:
     return _HLL_NEWLINE_RE.sub(r"\1</span>\n", html)
 
 
+# ── Wrapped Code Blocks ──
+
+
+# ``wrap`` values that switch the option off (``wrap="false"``); any other
+# value, or the bare flag, switches it on.
+_WRAP_OFF_VALUES = frozenset({"false", "no", "off", "0"})
+
+
+def _wrap_validator(validator, language, inputs, options, attrs, md):
+    """Accept a ``wrap`` fence option, then defer to the highlight validator.
+
+    ``wrap`` is lifted out of *inputs* into *options* so the stock validator
+    never sees it (it would otherwise treat the unknown key as an attribute and
+    drop it, or reject a plain-form header outright).
+    """
+    if "wrap" in inputs:
+        value = inputs["wrap"]
+        inputs = {k: v for k, v in inputs.items() if k != "wrap"}
+        if str(value).strip().lower() not in _WRAP_OFF_VALUES:
+            options["wrap"] = True
+    return validator(language, inputs, options, attrs, md)
+
+
+def _ignore_wrap_validator(validator, language, inputs, options, attrs, md):
+    """Drop a ``wrap`` option before a custom fence's own validator sees it.
+
+    A custom fence (``mermaid``) is not a code block, so ``wrap`` means nothing
+    to it -- but left in place, its validator would reject a plain-form header
+    (```` ```mermaid wrap ````) and the fence would fall through to the
+    highlighter as code.
+    """
+    inputs = {k: v for k, v in inputs.items() if k != "wrap"}
+    return validator(language, inputs, options, attrs, md)
+
+
+def _wrap_formatter(formatter, src="", language="", options=None, md=None, **kwargs):
+    """Highlight a fence, adding the ``wrap`` class when the option is set.
+
+    A wrapped block with ``linenums`` switches to inline line numbers for that
+    block only: the default table layout puts the numbers in a separate
+    ``<pre>`` column, which a soft-wrapped line would push out of step with its
+    number.
+    """
+    if not (options and options.pop("wrap", False)):
+        return formatter(src=src, language=language, options=options, md=md, **kwargs)
+    kwargs["classes"] = [*(kwargs.get("classes") or []), "wrap"]
+    fences = formatter.__self__
+    style = fences.linenums_style
+    fences.linenums_style = "pymdownx-inline"
+    try:
+        return formatter(src=src, language=language, options=options, md=md, **kwargs)
+    finally:
+        fences.linenums_style = style
+
+
+class _CodeWrapExtension(markdown.Extension):
+    """Teach ``pymdownx.superfences`` a ``wrap`` option for highlighted fences.
+
+    ```` ```python {wrap} ```` (or ``wrap`` inside a brace group, e.g.
+    ```` ```{.python title="x" wrap} ````) puts a ``wrap`` class on the block's
+    ``<div class="highlight">`` so the theme soft-wraps its long lines instead of
+    scrolling horizontally. The option is parsed by superfences itself -- this
+    wraps the validator and formatter of its default (highlight) fence entry -- so
+    only what superfences genuinely treats as a fence opener is affected, at any
+    nesting depth. Custom fences such as ``mermaid`` have the option stripped
+    before their own validator runs, so it is ignored there. ``wrap="false"``
+    (or ``no``/``off``/``0``) leaves wrapping off. Must be registered after
+    ``pymdownx.superfences``.
+    """
+
+    def extendMarkdown(self, md: markdown.Markdown) -> None:
+        from pymdownx.superfences import SuperFencesCodeExtension
+
+        for ext in md.registeredExtensions:
+            if isinstance(ext, SuperFencesCodeExtension):
+                entry, *custom = ext.superfences
+                entry["validator"] = functools.partial(_wrap_validator, entry["validator"])
+                entry["formatter"] = functools.partial(_wrap_formatter, entry["formatter"])
+                for fence in custom:
+                    fence["validator"] = functools.partial(
+                        _ignore_wrap_validator, fence["validator"]
+                    )
+                return
+        raise RuntimeError("_CodeWrapExtension requires pymdownx.superfences")
+
+
 # ── Core Functions ──
 
 
@@ -812,6 +900,8 @@ _MD_EXTENSIONS = [
     "pymdownx.tasklist",
     "pymdownx.highlight",
     "pymdownx.superfences",
+    # The ``wrap`` fence option; must follow superfences.
+    _CodeWrapExtension(),
     "pymdownx.arithmatex",
     "footnotes",
     "admonition",
@@ -933,8 +1023,9 @@ _NH3_ALLOWED_ATTRIBUTES: dict[str, set[str]] = {
     "ol": {"start", "type"},
     "li": {"value"},
     # KaTeX positions its HTML spans with inline ``style`` and marks its
-    # duplicated MathML tree ``aria-hidden``.
-    "span": {"style", "aria-hidden"},
+    # duplicated MathML tree ``aria-hidden``. ``data-linenos`` carries the line
+    # number of a wrapped code block's inline ``linenums`` (drawn by the theme).
+    "span": {"style", "aria-hidden", "data-linenos"},
     # KaTeX HTML and MathML attributes. ``svg``/``path`` also cover the inline
     # SVG KaTeX draws for radicals and stretchy delimiters.
     "svg": {"xmlns", "viewBox", "width", "height", "fill", "preserveAspectRatio"},

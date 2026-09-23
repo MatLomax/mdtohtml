@@ -718,6 +718,31 @@ pre code {
     margin: 0;
 }
 
+/* A ``wrap`` fence (```` ```python {wrap} ````) soft-wraps long lines at the
+   panel edge instead of scrolling horizontally; an unbreakable run (a URL, a
+   hash) breaks anywhere rather than overflowing. */
+.highlight.wrap pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow-x: visible;
+}
+
+/* A wrapped block's ``linenums`` are inline, one number per source line, drawn
+   from ``data-linenos`` so they stay out of a copied selection. The muted tone
+   still clears AA on the code panel. */
+.highlight.wrap .linenos[data-linenos]::before {
+    content: attr(data-linenos);
+    color: var(--ink-soft);
+}
+
+/* A banded line in a wrapped block spans exactly the panel (plus its bleed)
+   rather than growing with the line, so its text wraps inside the band. */
+.highlight.wrap .hll {
+    box-sizing: border-box;
+    width: calc(100% + 32px);
+    min-width: 0;
+}
+
 /* Titled header bar for a code block, lifted from a fence's ``title=`` attribute
    (``` ```{.python title="left | right"} ```). It mirrors the diagram card's
    header treatment: a mono uppercase bar with a left label and an optional

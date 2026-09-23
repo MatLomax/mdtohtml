@@ -1956,3 +1956,151 @@ class TestCodeLineHighlight:
         assert "border-left: 3px solid" in hll_print
 
 
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Wrapped code blocks ({wrap})
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestMdToHtmlCodeWrap:
+    @pytest.mark.parametrize(
+        "fence",
+        [
+            "```python {wrap}",
+            "``` {wrap}",
+            "```python wrap",
+            '```python hl_lines="1" wrap',
+            '```{.python title="t" wrap}',
+            '```{#blk .python wrap}',
+            "~~~python {wrap}",
+            "````python {wrap}",
+        ],
+    )
+    def test_wrap_option_adds_the_class(self, fence: str) -> None:
+        close = fence[: len(fence) - len(fence.lstrip("`~"))]
+        out = md_to_html(f"{fence}\nx = 1\n{close}")
+        assert re.search(r'<div (?:id="blk" )?class="wrap highlight">', out)
+        assert "wrap}" not in out
+
+    def test_block_without_wrap_has_no_wrap_class(self) -> None:
+        out = md_to_html("```python\nx = 1\n```")
+        assert 'class="highlight"' in out
+        assert "wrap" not in out
+
+    def test_wrap_keeps_the_title_bar_and_line_highlight(self) -> None:
+        out = md_to_html('```{.python title="Left | right" hl_lines="1" wrap}\nx = 1\n```')
+        assert '<div class="wrap highlight"><div class="sheet-head">' in out
+        assert '<span class="t">Left</span>' in out
+        assert '<span class="hll">' in out
+
+    def test_wrap_text_inside_a_quoted_title_is_kept(self) -> None:
+        # A title that mentions the syntax is text, not the option.
+        out = md_to_html('```{.markdown title="Add {wrap} to a fence"}\nx\n```')
+        assert '<span class="t">Add {wrap} to a fence</span>' in out
+        assert "wrap highlight" not in out
+
+    def test_titled_block_with_an_id_keeps_its_title_bar(self) -> None:
+        out = md_to_html('```{#blk .python title="t"}\nx\n```')
+        assert '<div id="blk" class="highlight"><div class="sheet-head">' in out
+
+    def test_wrap_in_a_callout_and_a_list(self) -> None:
+        out = md_to_html(
+            "> [!note]\n> ```sh {wrap}\n> ls\n> ```\n\n- a\n\n    ```sh {wrap}\n    ls\n    ```"
+        )
+        assert out.count('<div class="wrap highlight">') == 2
+
+    def test_indented_code_block_content_is_left_literal(self) -> None:
+        # Four spaces outside a list is an indented code block, so a fence-like
+        # line in it is code content, shown exactly as written.
+        out = md_to_html("Para\n\n    ```python {wrap}\n    x\n    ```")
+        assert "```python {wrap}" in out
+        assert "wrap highlight" not in out
+
+    def test_fence_content_mentioning_wrap_is_left_literal(self) -> None:
+        out = md_to_html("````markdown\n```python {wrap}\nx\n```\n````")
+        # Highlighted as Markdown source (token spans split the line).
+        assert "{wrap}" in out
+        assert "wrap highlight" not in out
+
+    def test_later_fence_still_wraps_after_an_indented_block(self) -> None:
+        out = md_to_html("Para\n\n    ```\n\nText\n\n```python {wrap}\nx\n```")
+        assert '<div class="wrap highlight">' in out
+
+    def test_wrapped_linenums_are_inline_and_numbered(self) -> None:
+        out = md_to_html('```python linenums="1" wrap\nx = 1\ny = 2\n```')
+        assert "highlighttable" not in out
+        assert '<span class="linenos" data-linenos="1 ">' in out
+        assert '<span class="linenos" data-linenos="2 ">' in out
+
+    def test_unwrapped_linenums_keep_the_table_layout(self) -> None:
+        # The inline switch is per block and must not leak to the next fence.
+        out = md_to_html(
+            '```python linenums="1" wrap\nx\n```\n\n```python linenums="1"\ny\n```'
+        )
+        assert out.count("highlighttable") == 1
+
+    @pytest.mark.parametrize("fence", ["```mermaid {wrap}", "```mermaid wrap"])
+    def test_mermaid_fence_ignores_wrap(self, fence: str) -> None:
+        # Both header forms still render the diagram; the plain form must not
+        # fall through to the highlighter as a code block.
+        out = md_to_html(f"{fence}\nflowchart LR\n  A --> B\n```")
+        assert "mermaid-diagram" in out
+        assert "highlight" not in out
+        assert "wrap" not in out.split("<svg", 1)[0]
+
+    @pytest.mark.parametrize(
+        "fence", ['```python wrap="false"', '```{.python wrap="no"}', "```python wrap='off'"]
+    )
+    def test_wrap_can_be_switched_off(self, fence: str) -> None:
+        out = md_to_html(f"{fence}\nx = 1\n```")
+        assert '<div class="highlight">' in out
+        assert "wrap" not in out
+
+    def test_wrap_joins_plain_form_options(self) -> None:
+        # Plain options and a brace group cannot be mixed on one header, so
+        # alongside plain options ``wrap`` is written bare.
+        out = md_to_html('```python title="x" linenums="1" wrap\ny = 2\n```')
+        assert '<div class="wrap highlight"><div class="sheet-head">' in out
+        assert 'data-linenos="1 "' in out
+
+
+class TestThemeCodeWrap:
+    @pytest.mark.parametrize("theme", ["default", "dark", "print", "report"])
+    def test_every_theme_soft_wraps_a_wrap_block(self, theme: str) -> None:
+        css = load_theme_css(theme)
+        rule = css[css.index(".highlight.wrap pre"):]
+        rule = rule[: rule.index("}")]
+        assert "white-space: pre-wrap" in rule
+        assert "overflow-wrap: anywhere" in rule
+
+    @pytest.mark.parametrize(
+        ("theme", "panel"),
+        [("default", "#f0f6f6"), ("dark", "#161b22"), ("print", "#f5f5f5"), ("report", None)],
+    )
+    def test_every_theme_draws_inline_line_numbers_at_aa(
+        self, theme: str, panel: str | None
+    ) -> None:
+        from mdtohtml import colour
+
+        css = load_theme_css(theme)
+        rule = css[css.index(".highlight.wrap .linenos[data-linenos]::before"):]
+        rule = rule[: rule.index("}")]
+        assert "content: attr(data-linenos)" in rule
+        ink = re.search(r"color:\s*([^;]+);", rule).group(1).strip()
+        if panel is None:
+            # Report: a token; ``--ink-soft`` clears AA in both schemes, while
+            # ``--ink-faint`` does not on the light panel.
+            assert ink == "var(--ink-soft)"
+            return
+        la = colour.relative_luminance(colour.parse_hex(ink))
+        lb = colour.relative_luminance(colour.parse_hex(panel))
+        assert (max(la, lb) + 0.05) / (min(la, lb) + 0.05) >= 4.5
+        assert f"background: {panel}" in css
+
+    def test_report_band_fits_the_wrapped_panel(self) -> None:
+        css = load_theme_css("report")
+        rule = css[css.index(".highlight.wrap .hll"):]
+        rule = rule[: rule.index("}")]
+        assert "width: calc(100% + 32px)" in rule
+        assert "min-width: 0" in rule

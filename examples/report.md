@@ -349,6 +349,19 @@ def build(md: str) -> str:
     return doc
 ```
 
+Add `{wrap}` to the opening line (or a bare `wrap` inside a brace group) to
+soft-wrap long lines at the panel edge instead of scrolling sideways:
+
+````markdown
+```{.python title="wrap | long lines" wrap}
+MESSAGE = "A long line soft-wraps at the panel edge instead of scrolling: the rest of it carries on onto the next visual row, so nothing hides past the right-hand edge."
+```
+````
+
+```{.python title="wrap | long lines" wrap}
+MESSAGE = "A long line soft-wraps at the panel edge instead of scrolling: the rest of it carries on onto the next visual row, so nothing hides past the right-hand edge."
+```
+
 ^ Math
 ## Mathematics
 

@@ -5,6 +5,24 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- A `{wrap}` switch for fenced code blocks: ` ```python {wrap} ` soft-wraps long
+  lines at the panel edge instead of scrolling horizontally, in every theme.
+  Alongside other options it is a bare `wrap`, inside a brace group
+  (` ```{.python title="a | b" wrap} `) or among plain options
+  (` ```python linenums="1" wrap `); `wrap="false"` leaves it off. It combines
+  with `hl_lines` and with `linenums` (a wrapped block numbers its lines inline
+  so the numbers stay aligned), works in fences nested in lists and callouts,
+  and is ignored on `mermaid` fences.
+
+### Fixed
+
+- A code block with an `#id` in its attributes kept its `title=` as a bare
+  unstyled label instead of the title bar.
+
 ## [0.3.2] - 2026-09-23
 
 ### Added
