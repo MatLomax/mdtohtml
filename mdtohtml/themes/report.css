@@ -17,6 +17,7 @@
     --accent: #b26a00;
     --accent-soft: #f7ecd6;
     --accent-line: #e6c78d;
+    --accent-edge: #bf7f26;
     --shadow: 0 1px 2px rgba(20, 24, 34, 0.06), 0 8px 26px rgba(20, 24, 34, 0.08);
     --mono: ui-monospace, "Cascadia Code", "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
@@ -35,6 +36,7 @@
         --accent: #e0a047;
         --accent-soft: #2e2415;
         --accent-line: #4a3a1c;
+        --accent-edge: #8f6a2c;
         --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.45);
     }
 }
@@ -584,9 +586,10 @@ blockquote p {
 
 /* A ``> [!keypoint]`` callout is a plain elevated card -- no coloured rule, no
    title -- holding a lead paragraph and an optional amber-barred pull quote, for
-   the one takeaway of a section. */
+   the one takeaway of a section. Its 1px edge uses ``--accent-edge``, which
+   clears 3:1 against the card in both schemes so the outline stays visible. */
 .admonition.keypoint {
-    border: 1px solid var(--accent-line);
+    border: 1px solid var(--accent-edge);
     border-radius: 12px;
     padding: 24px 26px;
     margin: 24px 0;

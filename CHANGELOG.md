@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A code block with an `#id` in its attributes kept its `title=` as a bare
   unstyled label instead of the title bar.
+- The `report` theme's keypoint card outline was almost invisible (about 1.6:1
+  against the card). It now uses a stronger amber edge that clears 3:1 in both
+  light and dark schemes.
 
 ## [0.3.2] - 2026-09-23
 

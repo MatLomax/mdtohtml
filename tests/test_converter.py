@@ -1864,8 +1864,8 @@ class TestReportTheme:
     def test_report_css_styles_keypoint_card(self) -> None:
         css = load_theme_css("report")
         kp = re.search(r"\.admonition\.keypoint \{([^}]*)\}", css).group(1)
-        # An elevated white card with an accent-line border (not a tinted rule).
-        assert "border: 1px solid var(--accent-line)" in kp
+        # An elevated panel card with an accent-edge border (not a tinted rule).
+        assert "border: 1px solid var(--accent-edge)" in kp
         assert "background: var(--panel)" in kp
         # No title on a keypoint.
         assert re.search(
@@ -2104,3 +2104,31 @@ class TestThemeCodeWrap:
         rule = rule[: rule.index("}")]
         assert "width: calc(100% + 32px)" in rule
         assert "min-width: 0" in rule
+
+
+class TestReportThemeKeypointEdge:
+    def test_keypoint_edge_clears_non_text_contrast_in_both_schemes(self) -> None:
+        """The keypoint card's 1px edge is its only outline, so it must meet the
+        WCAG 3:1 non-text contrast against the card (``--panel``) and the page
+        (``--paper``) in light and dark."""
+        from mdtohtml import colour
+
+        css = load_theme_css("report")
+        light = css[: css.index("@media (prefers-color-scheme: dark)")]
+        dark = css[css.index("@media (prefers-color-scheme: dark)"):]
+
+        def token(block: str, name: str) -> str:
+            return re.search(rf"{name}:\s*(#[0-9a-fA-F]{{3,6}})\b", block).group(1)
+
+        def ratio(a: str, b: str) -> float:
+            la = colour.relative_luminance(colour.parse_hex(a))
+            lb = colour.relative_luminance(colour.parse_hex(b))
+            hi, lo = max(la, lb), min(la, lb)
+            return (hi + 0.05) / (lo + 0.05)
+
+        # The edge separates the card from both its own fill and the page it
+        # sits on.
+        for block in (light, dark):
+            edge = token(block, "--accent-edge")
+            assert ratio(edge, token(block, "--panel")) >= 3.0
+            assert ratio(edge, token(block, "--paper")) >= 3.0
