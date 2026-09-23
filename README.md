@@ -17,7 +17,8 @@ standalone HTML.
   scrolling; alongside other options write a bare `wrap`, e.g.
   ` ```{.python title="x" wrap} ` or ` ```python linenums="1" wrap `),
   `~~del~~`, `==mark==`, and an
-  optional table-of-contents sidebar (append `{-toc}` to a heading to keep it
+  optional table-of-contents sidebar that opens collapsed to a slim rail and
+  slides out from its menu button (append `{-toc}` to a heading to keep it
   out of the sidebar).
 - **Themeable** via drop-in CSS files — add a theme without rebuilding
   anything. Ships a `report` theme (a warm, AA-accessible, auto light/dark

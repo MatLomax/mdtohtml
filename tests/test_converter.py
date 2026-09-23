@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 
 from mdtohtml.converter import (
+    TOC_HEAD_JS,
+    TOC_INIT_JS,
     TOC_JS,
     _apply_toc_optout,
     _build_toc_nav,
@@ -687,6 +689,85 @@ class TestToc:
         assert "<nav" not in result
         assert "<main>" not in result
 
+    def test_render_html_collapses_the_toc_before_first_paint(
+        self, tmp_themes_dir: Path
+    ) -> None:
+        css = (tmp_themes_dir / "test-theme.css").read_text()
+        result = render_html("# One\n\n## Two\n", css, toc=True)
+        head = result[: result.index("</head>")]
+        # The collapse flag is set by a head script placed BEFORE the theme
+        # stylesheet, so it never waits on a pending stylesheet (e.g. a font
+        # @import) and always lands before first paint.
+        assert f"<script>{TOC_HEAD_JS}</script>" in head
+        assert head.index(TOC_HEAD_JS) < head.index("<style>")
+        # The ARIA sync runs straight after the nav, ahead of <main>.
+        nav_end = result.index("</nav>")
+        assert nav_end < result.index(TOC_INIT_JS) < result.index("<main>")
+        assert result.index(TOC_JS) > result.index("</main>")
+
+    def test_no_toc_means_no_head_script(self, tmp_themes_dir: Path) -> None:
+        css = (tmp_themes_dir / "test-theme.css").read_text()
+        assert "<script>" not in render_html("# One\n", css)
+
+    def test_toc_head_js_marks_the_document(self, tmp_path: Path) -> None:
+        import json
+        import shutil
+        import subprocess
+
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip("node not available")
+        (tmp_path / "head.js").write_text(TOC_HEAD_JS, encoding="utf-8")
+        harness = r"""
+const js=require('fs').readFileSync(process.argv[2],'utf8');
+const cls=new Set();
+global.document={documentElement:{classList:{add(...c){c.forEach(x=>cls.add(x));}}}};
+eval(js);
+process.stdout.write(JSON.stringify([...cls].sort()));
+"""
+        (tmp_path / "harness.js").write_text(harness, encoding="utf-8")
+        proc = subprocess.run(
+            [node, str(tmp_path / "harness.js"), str(tmp_path / "head.js")],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, proc.stderr
+        assert json.loads(proc.stdout) == ["toc-collapsed", "toc-js"]
+
+    @pytest.mark.parametrize("collapsed", [True, False])
+    def test_toc_init_js_syncs_the_toggle_aria(
+        self, tmp_path: Path, collapsed: bool
+    ) -> None:
+        import json
+        import shutil
+        import subprocess
+
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip("node not available")
+        (tmp_path / "init.js").write_text(TOC_INIT_JS, encoding="utf-8")
+        harness = r"""
+const js=require('fs').readFileSync(process.argv[2],'utf8');
+const collapsed=process.argv[3]==='1';
+const btn={attrs:{},setAttribute(k,v){btn.attrs[k]=v;}};
+const toc={querySelector:()=>btn};
+global.document={getElementById(id){return id==='toc'?toc:null;},documentElement:{classList:{contains(c){return c==='toc-collapsed'&&collapsed;}}}};
+eval(js);
+process.stdout.write(JSON.stringify(btn.attrs));
+"""
+        (tmp_path / "harness.js").write_text(harness, encoding="utf-8")
+        proc = subprocess.run(
+            [node, str(tmp_path / "harness.js"), str(tmp_path / "init.js"),
+             "1" if collapsed else "0"],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, proc.stderr
+        expected = (
+            {"aria-expanded": "false", "aria-label": "Expand table of contents"}
+            if collapsed
+            else {"aria-expanded": "true", "aria-label": "Collapse table of contents"}
+        )
+        assert json.loads(proc.stdout) == expected
+
     def test_convert_html_toc(self, tmp_themes_dir: Path) -> None:
         content = convert(
             "# Heading\n\nText.\n", "test-theme", tmp_themes_dir, toc=True,
@@ -714,7 +795,10 @@ class TestToc:
         assert 'class="toc-head"' in nav
         assert 'class="toc-toggle"' in nav
         assert 'type="button"' in nav
-        # Default (each load) is expanded.
+        # Hidden unless a theme reveals it for a script-driven page.
+        assert 'class="toc-toggle" hidden' in nav
+        # The markup itself is expanded, so a reader without JavaScript gets
+        # the open list; TOC_INIT_JS collapses it when a script can drive it.
         assert 'aria-expanded="true"' in nav
         # The disclosure button names the region it controls, which carries the id.
         assert 'aria-controls="toc-list"' in nav
@@ -722,7 +806,7 @@ class TestToc:
 
     def test_toc_js_wires_the_collapse_toggle(self) -> None:
         assert "toc-toggle" in TOC_JS
-        assert "classList.toggle('collapsed')" in TOC_JS
+        assert "classList.toggle('toc-collapsed')" in TOC_JS
         # The scrollspy IIFE is still present alongside the toggle.
         assert "getBoundingClientRect" in TOC_JS
 
@@ -769,7 +853,7 @@ const toc={scrollHeight:10,clientHeight:100,scrollTop:0,querySelectorAll:()=>anc
 let sh=null;
 global.requestAnimationFrame=fn=>fn();
 global.getComputedStyle=()=>({scrollMarginTop:'0px'});
-global.document={getElementById(id){if(id==='toc')return toc;const m=/^h(\d)$/.exec(id);return m?headings[+m[1]]:null;},documentElement:{get scrollHeight(){return scrollHeight;}}};
+global.document={getElementById(id){if(id==='toc')return toc;const m=/^h(\d)$/.exec(id);return m?headings[+m[1]]:null;},documentElement:{classList:{contains(){return false;}},get scrollHeight(){return scrollHeight;}}};
 global.window={get innerHeight(){return innerHeight;},get scrollY(){return scrollY;},addEventListener(ev,fn){if(ev==='scroll')sh=fn;},requestAnimationFrame:global.requestAnimationFrame};
 const run=()=>sh&&sh();
 const active=()=>{for(let i=0;i<links.length;i++)if(links[i].cls.has('active'))return i;return -1;};
@@ -828,7 +912,7 @@ const toc={scrollHeight:10,clientHeight:100,scrollTop:0,querySelectorAll:()=>anc
 let sh=null;
 global.requestAnimationFrame=fn=>fn();
 global.getComputedStyle=el=>({scrollMarginTop:margins[el._i]+'px'});
-global.document={getElementById(id){if(id==='toc')return toc;const m=/^h(\d)$/.exec(id);return m?headings[+m[1]]:null;},documentElement:{scrollHeight:2000}};
+global.document={getElementById(id){if(id==='toc')return toc;const m=/^h(\d)$/.exec(id);return m?headings[+m[1]]:null;},documentElement:{classList:{contains(){return false;}},scrollHeight:2000}};
 global.window={innerHeight:500,scrollY:0,addEventListener(ev,fn){if(ev==='scroll')sh=fn;},requestAnimationFrame:global.requestAnimationFrame};
 const run=()=>sh&&sh();
 const active=()=>{for(let i=0;i<links.length;i++)if(links[i].cls.has('active'))return i;return -1;};
@@ -854,10 +938,55 @@ process.stdout.write(JSON.stringify(out));
         assert result["plainNotStolen"] == 1  # plain h1 kept; lower kicker at 90 > 68
         assert result["firstKicker"] == 0     # kicker h0 lights at top 40 (<= 68)
 
+    @pytest.mark.parametrize("collapsed", [False, True])
+    def test_toc_scrollspy_keeps_active_below_the_sticky_header(
+        self, tmp_path: Path, collapsed: bool
+    ) -> None:
+        """Run the real TOC_JS on a sidebar that scrolls: an active entry hidden
+        under the 40px sticky header is scrolled clear of it -- unless the
+        sidebar is collapsed, when the list is not scrolled at all."""
+        import json
+        import shutil
+        import subprocess
+
+        node = shutil.which("node")
+        if node is None:
+            pytest.skip("node not available")
+        (tmp_path / "toc.js").write_text(TOC_JS, encoding="utf-8")
+        harness = r"""
+const js=require('fs').readFileSync(process.argv[2],'utf8');
+const collapsed=process.argv[3]==='1';
+const link={cls:new Set()};link.classList={add(c){link.cls.add(c);},remove(c){link.cls.delete(c);}};
+link.setAttribute=()=>{};link.removeAttribute=()=>{};link.getAttribute=()=>'#h0';
+link.getBoundingClientRect=()=>({top:10,bottom:30});
+const heading={getBoundingClientRect(){return {top:0};}};
+const head={offsetHeight:40};
+const toc={scrollHeight:1000,clientHeight:100,scrollTop:500,querySelectorAll:()=>[link],
+  querySelector:s=>s==='.toc-head'?head:null,getBoundingClientRect(){return {top:0,bottom:100};}};
+global.requestAnimationFrame=fn=>fn();
+global.getComputedStyle=()=>({scrollMarginTop:'0px'});
+global.document={getElementById(id){return id==='toc'?toc:(id==='h0'?heading:null);},
+  documentElement:{scrollHeight:5000,classList:{contains(c){return c==='toc-collapsed'&&collapsed;}}}};
+global.window={innerHeight:800,scrollY:0,addEventListener(){},requestAnimationFrame:global.requestAnimationFrame};
+eval(js);
+process.stdout.write(JSON.stringify({scrollTop:toc.scrollTop,active:link.cls.has('active')}));
+"""
+        (tmp_path / "harness.js").write_text(harness, encoding="utf-8")
+        proc = subprocess.run(
+            [node, str(tmp_path / "harness.js"), str(tmp_path / "toc.js"),
+             "1" if collapsed else "0"],
+            capture_output=True, text=True, timeout=30,
+        )
+        assert proc.returncode == 0, proc.stderr
+        r = json.loads(proc.stdout)
+        assert r["active"] is True
+        # Entry top 10 sits under the header band (0..40): scroll up by 30.
+        assert r["scrollTop"] == (500 if collapsed else 470)
+
     def test_toc_js_toggle_collapses_and_expands(self, tmp_path: Path) -> None:
-        """Run the real toggle IIFE (via node): clicking flips the 'collapsed'
-        class and the button's aria-expanded/aria-label, and clicking again
-        restores it -- with no persistence call."""
+        """Run the real toggle IIFE (via node): clicking flips the document's
+        'toc-collapsed' class and the button's aria-expanded/aria-label, and
+        clicking again restores it -- with no persistence call."""
         import json
         import shutil
         import subprocess
@@ -873,16 +1002,18 @@ process.stdout.write(JSON.stringify(out));
 const fs=require('fs');
 const js=fs.readFileSync(process.argv[2],'utf8');
 let clickHandler=null;
-const cls=new Set();
+const cls=new Set(['toc-js','toc-collapsed']);
+let scrolls=0;
 const btn={attrs:{},addEventListener(ev,fn){if(ev==='click')clickHandler=fn;},setAttribute(k,v){btn.attrs[k]=v;}};
-const toc={classList:{toggle(c){if(cls.has(c)){cls.delete(c);return false;}cls.add(c);return true;}},querySelector:()=>btn,querySelectorAll:()=>[],getBoundingClientRect(){return{top:0,bottom:0};},scrollHeight:0,clientHeight:0};
+const toc={querySelector:()=>btn,querySelectorAll:()=>[],getBoundingClientRect(){return{top:0,bottom:0};},scrollHeight:0,clientHeight:0};
 global.requestAnimationFrame=fn=>fn();
-global.document={getElementById(id){return id==='toc'?toc:null;},documentElement:{scrollHeight:0}};
-global.window={innerHeight:0,scrollY:0,addEventListener(){},requestAnimationFrame:global.requestAnimationFrame};
+global.Event=function(t){this.type=t;};
+global.document={getElementById(id){return id==='toc'?toc:null;},documentElement:{scrollHeight:0,classList:{contains(c){return cls.has(c);},toggle(c){if(cls.has(c)){cls.delete(c);return false;}cls.add(c);return true;}}}};
+global.window={innerHeight:0,scrollY:0,addEventListener(){},dispatchEvent(e){if(e.type==='scroll')scrolls++;},requestAnimationFrame:global.requestAnimationFrame};
 eval(js);
 const out={hasHandler:!!clickHandler};
-clickHandler();out.first={collapsed:cls.has('collapsed'),aria:btn.attrs['aria-expanded'],label:btn.attrs['aria-label']};
-clickHandler();out.second={collapsed:cls.has('collapsed'),aria:btn.attrs['aria-expanded'],label:btn.attrs['aria-label']};
+clickHandler();out.first={collapsed:cls.has('toc-collapsed'),aria:btn.attrs['aria-expanded'],label:btn.attrs['aria-label'],scrolls};
+clickHandler();out.second={collapsed:cls.has('toc-collapsed'),aria:btn.attrs['aria-expanded'],label:btn.attrs['aria-label'],scrolls};
 process.stdout.write(JSON.stringify(out));
 """
         (tmp_path / "harness.js").write_text(harness, encoding="utf-8")
@@ -893,11 +1024,15 @@ process.stdout.write(JSON.stringify(out));
         assert proc.returncode == 0, proc.stderr
         r = json.loads(proc.stdout)
         assert r["hasHandler"] is True
+        # The page starts collapsed: the first click expands (and re-runs the
+        # scrollspy to bring the active entry into view), the second collapses.
         assert r["first"] == {
-            "collapsed": True, "aria": "false", "label": "Expand table of contents",
+            "collapsed": False, "aria": "true", "label": "Collapse table of contents",
+            "scrolls": 1,
         }
         assert r["second"] == {
-            "collapsed": False, "aria": "true", "label": "Collapse table of contents",
+            "collapsed": True, "aria": "false", "label": "Expand table of contents",
+            "scrolls": 1,
         }
 
 
@@ -2193,3 +2328,82 @@ class TestReportThemeKeypointEdge:
             edge = token(block, "--accent-edge")
             assert ratio(edge, token(block, "--panel")) >= 3.0
             assert ratio(edge, token(block, "--paper")) >= 3.0
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# TOC collapse: slide, menu icon, collapsed by default (screen themes)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestThemeTocCollapse:
+    THEMES = ["default", "dark", "report"]
+
+    @staticmethod
+    def _screen(css: str) -> str:
+        """The theme's ``@media screen`` block holding the collapse rules."""
+        start = css.index(".toc-collapsed #toc {")
+        return css[css.rindex("@media screen {", 0, start):]
+
+    @pytest.mark.parametrize("theme", THEMES)
+    def test_toggle_shows_only_when_a_script_drives_it(self, theme: str) -> None:
+        css = load_theme_css(theme)
+        assert "display: none" in _css_rule(css, ".toc-toggle")
+        assert "display: flex" in _css_rule(css, ".toc-js #toc .toc-toggle")
+
+    @pytest.mark.parametrize("theme", THEMES)
+    def test_collapse_slides_in_200ms(self, theme: str) -> None:
+        screen = self._screen(load_theme_css(theme))
+        assert "transform: translateX(calc(3rem - 100%))" in screen
+        assert "transition: transform 200ms ease" in screen
+        # The content column follows at the same pace.
+        assert re.search(r"body:has\(#toc\) \{\s*transition: (padding|margin)-left 200ms ease", screen)
+        assert re.search(r"\.toc-collapsed body:has\(#toc\) \{\s*(padding|margin)-left:", screen)
+        # Contents fade, then leave the tab order once the fade is over.
+        assert "visibility 0s linear 200ms" in screen
+
+    @pytest.mark.parametrize("theme", THEMES)
+    def test_collapsed_toggle_is_a_menu_icon(self, theme: str) -> None:
+        screen = self._screen(load_theme_css(theme))
+        rule = screen[screen.index(".toc-collapsed #toc .toc-toggle::before {"):]
+        rule = rule[: rule.index("}")]
+        assert "box-shadow: 0 -4px 0 currentColor, 0 4px 0 currentColor" in rule
+
+    @pytest.mark.parametrize("theme", THEMES)
+    def test_reduced_motion_drops_the_slide(self, theme: str) -> None:
+        screen = self._screen(load_theme_css(theme))
+        motion = screen[screen.index("@media (prefers-reduced-motion: reduce)"):]
+        rule = motion[: motion.index("}")]
+        assert "#toc," in rule
+        assert "body:has(#toc)," in rule
+        assert "transition: none" in rule
+
+    @pytest.mark.parametrize("theme", ["default", "dark", "report", "print"])
+    def test_toggle_never_prints(self, theme: str) -> None:
+        css = load_theme_css(theme)
+        if theme == "print":
+            assert "display: none" in _css_rule(css, ".toc-toggle")
+            return
+        printed = css[css.index("@media print"):]
+        # The print rule must out-rank the screen rule that reveals the toggle
+        # (``.toc-js #toc .toc-toggle``), not merely exist.
+        assert re.search(
+            r"\.toc-toggle,\s*\.toc-js #toc \.toc-toggle \{\s*display: none;", printed
+        )
+
+    def test_report_print_band_still_anchors_its_divider(self) -> None:
+        # The divider is an absolutely positioned ::after; on paper the band
+        # must stay positioned or the line lands at the foot of the page.
+        css = load_theme_css("report")
+        printed = css[css.index("@media print"):]
+        band = printed[printed.index(".toc-head {"):]
+        assert "position: relative" in band[: band.index("}")]
+
+    @pytest.mark.parametrize("theme", THEMES)
+    def test_header_band_sticks_so_the_toggle_stays_reachable(self, theme: str) -> None:
+        css = load_theme_css(theme)
+        head = _css_rule(css, ".toc-head")
+        assert "position: sticky" in head
+        assert "top: 0" in head
+        assert "background:" in head
+        # The toggle is positioned against the band, not the scrolling panel.
+        assert "position: absolute" in _css_rule(css, ".toc-toggle")

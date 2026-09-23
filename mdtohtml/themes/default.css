@@ -635,7 +635,7 @@ hr {
     bottom: 0;
     width: 250px;
     overflow-y: auto;
-    padding: 1.5rem 0;
+    padding: 0 0 1.5rem;
     border-right: 1px solid #e0e0e0;
     background: #f8f9fa;
     font-size: 0.85rem;
@@ -696,7 +696,137 @@ body:has(#toc) {
     font-weight: 600;
 }
 
+/* The header band holds the title and the collapse toggle. It sticks to the
+   top of the sidebar, opaque, so the toggle stays in reach however far the list
+   below it scrolls; ``flow-root`` keeps the title's margin inside the band, and
+   a divider marks where the scrolling list passes under it. */
+.toc-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flow-root;
+    padding-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #e0e0e0;
+    background: #f8f9fa;
+}
+
+/* Collapse/expand button, pinned to the header band's top-right corner so it
+   rides into the visible rail when the collapsed panel slides left. Its glyph is
+   CSS-drawn: a chevron pointing left (collapse) while open, a three-bar menu
+   icon (expand) once collapsed. Hidden until the page script marks the document
+   ``toc-js``, so a reader without JavaScript never gets a button that does
+   nothing. */
+.toc-toggle {
+    display: none;
+    position: absolute;
+    top: 1.25rem;
+    right: 0.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: none;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    color: #767676;
+    cursor: pointer;
+}
+
+.toc-js #toc .toc-toggle {
+    display: flex;
+}
+
+.toc-toggle:hover {
+    color: #333;
+    border-color: #bbb;
+    background: #e8e8e8;
+}
+
+.toc-toggle::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-left: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateX(1px) rotate(45deg);
+}
+
+/* Collapsed: the panel slides left until only a 3rem rail of it shows, holding
+   the toggle (now the menu icon); the title and list fade out and the content
+   column slides over into the freed width. The panel keeps its full width while
+   it moves, so nothing inside it reflows mid-slide. Screen-only, so a collapsed
+   sidebar still prints its full list. */
+@media screen {
+    #toc {
+        transition: transform 200ms ease;
+    }
+
+    body:has(#toc) {
+        transition: margin-left 200ms ease;
+    }
+
+    #toc .toc-title,
+    #toc > ul {
+        transition: opacity 200ms ease, visibility 0s linear 0s;
+    }
+
+    .toc-collapsed #toc {
+        transform: translateX(calc(3rem - 100%));
+        overflow-y: hidden;
+    }
+
+    /* Visibility flips only once the fade has finished, so collapsed entries
+       leave the tab order without cutting the fade short. */
+    .toc-collapsed #toc .toc-title,
+    .toc-collapsed #toc > ul {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 200ms ease, visibility 0s linear 200ms;
+    }
+
+    .toc-collapsed #toc .toc-toggle::before {
+        width: 12px;
+        height: 1.5px;
+        border: 0;
+        background: currentColor;
+        box-shadow: 0 -4px 0 currentColor, 0 4px 0 currentColor;
+        transform: none;
+    }
+
+    .toc-collapsed body:has(#toc) {
+        margin-left: calc(3rem + 10px);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #toc,
+        body:has(#toc),
+        #toc .toc-title,
+        #toc > ul,
+        .toc-collapsed #toc .toc-title,
+        .toc-collapsed #toc > ul {
+            transition: none;
+        }
+    }
+}
+
 @media print {
+    .toc-head {
+        position: static;
+        padding-top: 0;
+        margin-bottom: 0;
+        border-bottom: none;
+        background: none;
+    }
+
+    /* No interactive control on paper; the full list always prints. The
+       ``.toc-js`` selector out-ranks the screen rule that reveals the toggle. */
+    .toc-toggle,
+    .toc-js #toc .toc-toggle {
+        display: none;
+    }
+
     #toc {
         position: static;
         width: auto;

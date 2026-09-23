@@ -28,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The table-of-contents sidebar now opens collapsed to a slim rail and slides
+  in and out (200ms) from its toggle, which shows a menu icon while collapsed
+  and the chevron while open. The `default` and `dark` themes gain the working
+  collapse toggle the `report` theme had (it was an unstyled button that did
+  nothing there). Without JavaScript the sidebar stays open and the toggle is
+  hidden; the slide is dropped when the reader prefers reduced motion.
 - Diagram labels render at 14px instead of mermaid's 16px default, in every
   theme; mermaid lays each diagram out around the smaller text, so boxes shrink
   with it rather than the picture being scaled down. Sequence, gantt and pie

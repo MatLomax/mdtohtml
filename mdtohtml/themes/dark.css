@@ -647,7 +647,7 @@ hr {
     box-sizing: border-box;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 2rem 0 3rem;
+    padding: 0 0 3rem;
     background: #11151c;
     border-right: 1px solid #232b36;
     font-size: 0.8125rem;
@@ -761,10 +761,135 @@ body:has(#toc) > main {
     font-weight: 600;
 }
 
+/* The header band holds the title and the collapse toggle. It sticks to the
+   top of the sidebar, opaque, so the toggle stays in reach however far the list
+   below it scrolls; ``flow-root`` keeps the title's margin inside the band. */
+.toc-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flow-root;
+    padding-top: 2rem;
+    background: #11151c;
+}
+
+/* Collapse/expand button, pinned to the header band's top-right corner so it
+   rides into the visible rail when the collapsed panel slides left. Its glyph is
+   CSS-drawn: a chevron pointing left (collapse) while open, a three-bar menu
+   icon (expand) once collapsed. Hidden until the page script marks the document
+   ``toc-js``, so a reader without JavaScript never gets a button that does
+   nothing. */
+.toc-toggle {
+    display: none;
+    position: absolute;
+    top: 1.75rem;
+    right: 0.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: none;
+    border: 1px solid #2c3542;
+    border-radius: 5px;
+    color: #8b95a5;
+    cursor: pointer;
+}
+
+.toc-js #toc .toc-toggle {
+    display: flex;
+}
+
+.toc-toggle:hover {
+    color: #e2e8f0;
+    border-color: #3b4757;
+    background: rgba(124, 58, 237, 0.1);
+}
+
+.toc-toggle::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-left: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateX(1px) rotate(45deg);
+}
+
+/* Collapsed: the panel slides left until only a 3rem rail of it shows, holding
+   the toggle (now the menu icon); the title and list fade out and the content
+   column slides over into the freed width. The panel keeps its full width while
+   it moves, so nothing inside it reflows mid-slide. Screen-only, so a collapsed
+   sidebar still prints its full list. */
+@media screen {
+    #toc {
+        transition: transform 200ms ease;
+    }
+
+    body:has(#toc) {
+        transition: padding-left 200ms ease;
+    }
+
+    #toc .toc-title,
+    #toc > ul {
+        transition: opacity 200ms ease, visibility 0s linear 0s;
+    }
+
+    .toc-collapsed #toc {
+        transform: translateX(calc(3rem - 100%));
+        overflow-y: hidden;
+    }
+
+    /* Visibility flips only once the fade has finished, so collapsed entries
+       leave the tab order without cutting the fade short. */
+    .toc-collapsed #toc .toc-title,
+    .toc-collapsed #toc > ul {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 200ms ease, visibility 0s linear 200ms;
+    }
+
+    .toc-collapsed #toc .toc-toggle::before {
+        width: 12px;
+        height: 1.5px;
+        border: 0;
+        background: currentColor;
+        box-shadow: 0 -4px 0 currentColor, 0 4px 0 currentColor;
+        transform: none;
+    }
+
+    .toc-collapsed body:has(#toc) {
+        padding-left: 3rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #toc,
+        body:has(#toc),
+        #toc .toc-title,
+        #toc > ul,
+        .toc-collapsed #toc .toc-title,
+        .toc-collapsed #toc > ul {
+            transition: none;
+        }
+    }
+}
+
 /* In PDF there is no scrolling and no active heading, so the sidebar becomes a
    proper contents page on its own sheet. Colours stay dark because the theme
    prints its background. */
 @media print {
+    .toc-head {
+        position: static;
+        padding-top: 0;
+        background: none;
+    }
+
+    /* No interactive control on paper; the full list always prints. The
+       ``.toc-js`` selector out-ranks the screen rule that reveals the toggle. */
+    .toc-toggle,
+    .toc-js #toc .toc-toggle {
+        display: none;
+    }
+
     #toc {
         position: static;
         width: auto;

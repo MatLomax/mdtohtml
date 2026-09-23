@@ -607,6 +607,12 @@ hr {
 }
 
 /* @section: toc */
+/* The print theme's contents list is a static page, so it has no collapse
+   control. */
+.toc-toggle {
+    display: none;
+}
+
 #toc {
     position: static;
     width: auto;

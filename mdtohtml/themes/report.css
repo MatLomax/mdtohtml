@@ -1431,7 +1431,7 @@ hr {
     box-sizing: border-box;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 0.85rem 0 3rem;
+    padding: 0 0 3rem;
     background: var(--panel);
     border-right: 1px solid var(--line);
     font-size: 0.8125rem;
@@ -1444,16 +1444,28 @@ hr {
     scrollbar-color: var(--line) transparent;
 }
 
-/* The header band carries the title and the collapse toggle, plus the divider
-   rule (the ``#toc`` top padding is matched to this padding-bottom so the band
-   reads balanced). */
+/* The header band carries the title and the divider rule, and holds the
+   collapse toggle. It sticks to the top of the sidebar, opaque, so the toggle
+   stays in reach however far the list below it scrolls. The divider is drawn
+   inset (``::after``) because the band itself spans the full sidebar width to
+   cover the list scrolling under it. */
 .toc-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    margin: 0 1.25rem 0.9rem;
-    padding-bottom: 0.85rem;
+    min-height: 1.5rem;
+    padding: 0.85rem 1.25rem 1.75rem;
+    background: var(--panel);
+}
+
+.toc-head::after {
+    content: "";
+    position: absolute;
+    left: 1.25rem;
+    right: 1.25rem;
+    bottom: 0.9rem;
     border-bottom: 1px solid var(--line);
 }
 
@@ -1467,14 +1479,19 @@ hr {
     margin: 0;
 }
 
-/* Collapse/expand button. Its glyph is a CSS chevron (a bordered box corner
-   rotated) -- pointing left to collapse when open, flipped to point right when
-   the sidebar is a rail. */
+/* Collapse/expand button. It sits at the header band's right end (the band is
+   its containing block), so when the collapsed panel slides left it rides along
+   into the visible rail, centred there. Its glyph is CSS-drawn: a chevron pointing left (collapse) while open,
+   a three-bar menu icon (expand) once collapsed. Hidden until the page script
+   marks the document ``toc-js``, so a reader without JavaScript never gets a
+   button that does nothing. */
 .toc-toggle {
-    flex: none;
+    display: none;
+    position: absolute;
+    top: 0.85rem;
+    right: 0.75rem;
     width: 1.5rem;
     height: 1.5rem;
-    display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
@@ -1483,6 +1500,10 @@ hr {
     border-radius: 5px;
     color: var(--ink-faint);
     cursor: pointer;
+}
+
+.toc-js #toc .toc-toggle {
+    display: flex;
 }
 
 .toc-toggle:hover {
@@ -1616,32 +1637,69 @@ body:has(#toc) > main {
         padding: 0 0 0 17rem;
     }
 
-    /* Collapsed: the sidebar shrinks to a slim rail holding only the toggle,
-       which flips to point right (expand); the title and list hide and the
-       content column reclaims the freed width. Screen-only, so a collapsed
-       sidebar still prints its full list. */
-    #toc.collapsed {
-        width: 3rem;
+    /* Collapsed: the panel slides left until only a 3rem rail of it shows,
+       holding the toggle (now the menu icon); the title and list fade out and
+       the content column slides over into the freed width. The panel keeps its
+       full width while it moves, so nothing inside it reflows mid-slide.
+       Screen-only, so a collapsed sidebar still prints its full list. */
+    #toc {
+        transition: transform 200ms ease;
     }
 
-    #toc.collapsed .toc-head {
-        margin: 0;
-        padding: 0.85rem 0;
-        border-bottom: none;
-        justify-content: center;
+    body:has(#toc) {
+        transition: padding-left 200ms ease;
     }
 
-    #toc.collapsed .toc-title,
-    #toc.collapsed > ul {
-        display: none;
+    #toc .toc-title,
+    #toc > ul {
+        transition: opacity 200ms ease, visibility 0s linear 0s;
     }
 
-    #toc.collapsed .toc-toggle::before {
-        transform: translateX(-1px) rotate(-135deg);
+    .toc-head::after {
+        transition: border-color 200ms ease;
     }
 
-    body:has(#toc.collapsed) {
+    .toc-collapsed #toc {
+        transform: translateX(calc(3rem - 100%));
+        overflow-y: hidden;
+    }
+
+    .toc-collapsed #toc .toc-head::after {
+        border-color: transparent;
+    }
+
+    /* Visibility flips only once the fade has finished, so collapsed entries
+       leave the tab order without cutting the fade short. */
+    .toc-collapsed #toc .toc-title,
+    .toc-collapsed #toc > ul {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 200ms ease, visibility 0s linear 200ms;
+    }
+
+    .toc-collapsed #toc .toc-toggle::before {
+        width: 12px;
+        height: 1.5px;
+        border: 0;
+        background: currentColor;
+        box-shadow: 0 -4px 0 currentColor, 0 4px 0 currentColor;
+        transform: none;
+    }
+
+    .toc-collapsed body:has(#toc) {
         padding-left: 3rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #toc,
+        body:has(#toc),
+        .toc-head::after,
+        #toc .toc-title,
+        #toc > ul,
+        .toc-collapsed #toc .toc-title,
+        .toc-collapsed #toc > ul {
+            transition: none;
+        }
     }
 }
 
@@ -1673,8 +1731,16 @@ body:has(#toc) > main {
         border-left-color: #d9dee5;
     }
 
-    /* No interactive control on paper; the full list always prints. */
-    .toc-toggle {
+    /* In flow on paper, but still positioned: it anchors its divider. */
+    .toc-head {
+        position: relative;
+        background: none;
+    }
+
+    /* No interactive control on paper; the full list always prints. The
+       ``.toc-js`` selector out-ranks the screen rule that reveals the toggle. */
+    .toc-toggle,
+    .toc-js #toc .toc-toggle {
         display: none;
     }
 

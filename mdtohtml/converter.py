@@ -52,7 +52,7 @@ HTML_TEMPLATE = """\
 <head>
     <meta charset="utf-8">
     <title>{title}</title>
-    <style>{css}</style>
+{head_script}    <style>{css}</style>
 {head_extra}</head>
 <body>
 {body}
@@ -1345,7 +1345,10 @@ def _build_toc_nav(html_body: str, max_depth: int = 3) -> str:
         '<nav id="toc" aria-label="Table of Contents">',
         '<div class="toc-head">'
         '<div class="toc-title">Table of Contents</div>'
-        '<button type="button" class="toc-toggle" aria-expanded="true"'
+        # ``hidden`` until a theme's ``.toc-js`` rule reveals it: a theme with no
+        # collapse styling, or a reader without JavaScript, never sees a
+        # button that does nothing.
+        '<button type="button" class="toc-toggle" hidden aria-expanded="true"'
         ' aria-controls="toc-list"'
         ' aria-label="Collapse table of contents"></button>'
         "</div>",
@@ -1445,9 +1448,14 @@ links.forEach(function(l){l.classList.remove('active');l.removeAttribute('aria-c
 if(!active)return;
 active.classList.add('active');
 active.setAttribute('aria-current','location');
+// A collapsed sidebar shows no list, so it is not scrolled to the entry.
+if(de.classList.contains('toc-collapsed'))return;
 if(toc.scrollHeight<=toc.clientHeight)return;
+// The visible list starts below the sticky header band, not at the panel top.
+var head=toc.querySelector('.toc-head');
 var tr=toc.getBoundingClientRect(),ar=active.getBoundingClientRect();
-if(ar.top<tr.top)toc.scrollTop-=tr.top-ar.top;
+var top=tr.top+((head&&head.offsetHeight)||0);
+if(ar.top<top)toc.scrollTop-=top-ar.top;
 else if(ar.bottom>tr.bottom)toc.scrollTop+=ar.bottom-tr.bottom;
 }
 function schedule(){if(!raf)raf=requestAnimationFrame(update);}
@@ -1455,19 +1463,46 @@ window.addEventListener('scroll',schedule,{passive:true});
 window.addEventListener('resize',schedule,{passive:true});
 update();
 })();
-// Collapse/expand toggle: the button flips the sidebar between the full list and
-// a slim rail. State is not persisted -- each page load starts expanded -- so a
-// shared HTML file always opens showing its contents.
+// Collapse/expand toggle: the button flips the document's ``toc-collapsed``
+// state between the full list and a slim rail. State is not persisted -- each
+// page load starts collapsed (see TOC_HEAD_JS) -- so every reader opens the file
+// the same way. Expanding re-runs the scrollspy so the active entry is brought
+// into view (it is left alone while collapsed).
 (function(){
 var toc=document.getElementById('toc');
 if(!toc)return;
 var btn=toc.querySelector('.toc-toggle');
 if(!btn)return;
 btn.addEventListener('click',function(){
-var collapsed=toc.classList.toggle('collapsed');
+var collapsed=document.documentElement.classList.toggle('toc-collapsed');
 btn.setAttribute('aria-expanded',collapsed?'false':'true');
 btn.setAttribute('aria-label',collapsed?'Expand table of contents':'Collapse table of contents');
+if(!collapsed)window.dispatchEvent(new Event('scroll'));
 });
+})();
+"""
+
+
+# Runs in ``<head>`` BEFORE the stylesheet, so it never waits on a pending
+# stylesheet (a theme's font ``@import`` included) and always lands before first
+# paint: it marks the document ``toc-js`` (themes only show the toggle when a
+# script is there to drive it) and ``toc-collapsed``, so the page opens with the
+# contents tucked away, with no flash of the open sidebar and no slide on load.
+# The state lives on ``<html>`` because the sidebar markup does not exist yet.
+# Without JavaScript none of this runs and the sidebar simply stays open.
+TOC_HEAD_JS = "document.documentElement.classList.add('toc-js','toc-collapsed');\n"
+
+# Runs straight after the ``<nav id="toc">`` markup: brings the toggle's ARIA
+# state in line with the collapsed start before the rest of the page parses.
+TOC_INIT_JS = """\
+(function(){
+var toc=document.getElementById('toc');
+if(!toc)return;
+var btn=toc.querySelector('.toc-toggle');
+if(!btn)return;
+var collapsed=document.documentElement.classList.contains('toc-collapsed');
+btn.setAttribute('aria-expanded',collapsed?'false':'true');
+btn.setAttribute('aria-label',collapsed?'Expand table of contents':'Collapse table of contents');
 })();
 """
 
@@ -1621,15 +1656,25 @@ def render_html(
     # no id, so it never enters the TOC built from the body headings.
     toc_nav = _build_toc_nav(body) if toc else ""
     if toc_nav:
-        body = f"{toc_nav}\n<main>\n{hero}{body}\n</main>\n<script>\n{TOC_JS}</script>"
-    elif hero:
-        body = f"{hero}\n{body}"
+        body = (
+            f"{toc_nav}\n<script>\n{TOC_INIT_JS}</script>\n<main>\n{hero}{body}\n</main>\n"
+            f"<script>\n{TOC_JS}</script>"
+        )
+        head_script = f"    <script>{TOC_HEAD_JS}</script>\n"
+    else:
+        head_script = ""
+        if hero:
+            body = f"{hero}\n{body}"
 
     # Escape the title: it is interpolated raw into <title>, bypassing nh3.
     safe_title = _html.escape(title, quote=True)
 
     return HTML_TEMPLATE.format(
-        title=safe_title, css=css, body=body, head_extra=head_extra
+        title=safe_title,
+        head_script=head_script,
+        css=css,
+        body=body,
+        head_extra=head_extra,
     )
 
 
