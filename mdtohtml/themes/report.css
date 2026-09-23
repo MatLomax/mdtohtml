@@ -1134,6 +1134,123 @@ pre code {
     .mermaid-error-note { color: #f2a291; }
 }
 
+/* @section: mermaid-semantic
+   Semantic colours for diagram nodes, subgraphs and composite states: put a
+   class on one (``A[Deploy]:::success``, ``class S1 danger``, ``class Foo:::muted``)
+   and it takes the meaning's colour with no ``classDef`` needed -- ``success``
+   (done, passing), ``warning`` (caution, manual step), ``danger`` (failure,
+   blocked), ``info`` (external, informational), ``accent`` (the focus: new or
+   changed) and ``muted`` (out of scope, optional). ``danger`` also draws a
+   heavier border and ``muted`` a dashed one, so the meaning survives without
+   colour. The author's own styling wins: a ``classDef`` of the same name (listed
+   by mermaid_render in ``data-own-classes``) switches the class off diagram-wide,
+   and an element a ``style`` statement targets (marked ``own-style``) keeps
+   exactly its hand-set style; mermaid_render keeps a ``classDef default`` off
+   semantic-classed elements, as any assigned class beats it in mermaid. */
+.mermaid-diagram {
+    --sem-success-fill: #e3efdf;
+    --sem-success-edge: #4b7a45;
+    --sem-warning-fill: #f8ead6;
+    --sem-warning-edge: #b06d27;
+    --sem-danger-fill: #f8e0da;
+    --sem-danger-edge: #b0432c;
+    --sem-info-fill: #dcecea;
+    --sem-info-edge: #3f8079;
+    --sem-accent-fill: #ece5f4;
+    --sem-accent-edge: #7a5a9e;
+    --sem-muted-fill: #f4f6f8;
+    --sem-muted-edge: #7c8492;
+    --sem-ink: #1b1e24;
+    --sem-muted-ink: #4a515c;
+}
+
+@media (prefers-color-scheme: dark) {
+    .mermaid-diagram {
+        --sem-success-fill: #1c2b1a;
+        --sem-success-edge: #6fae66;
+        --sem-warning-fill: #33261a;
+        --sem-warning-edge: #d9954f;
+        --sem-danger-fill: #3a1e19;
+        --sem-danger-edge: #e0735c;
+        --sem-info-fill: #142e2b;
+        --sem-info-edge: #5fb3a9;
+        --sem-accent-fill: #2a2236;
+        --sem-accent-edge: #a78bd0;
+        --sem-muted-fill: #1b1f26;
+        --sem-muted-edge: #6b7482;
+        --sem-ink: #e9ecf1;
+        --sem-muted-ink: #b3bac6;
+    }
+}
+
+.mermaid-diagram:not([data-own-classes~="success"]) svg
+    :is(.node, .cluster, .statediagram-cluster).success:not(.own-style)
+    :is(rect, polygon, circle, ellipse, path) {
+    fill: var(--sem-success-fill) !important;
+    stroke: var(--sem-success-edge) !important;
+}
+
+.mermaid-diagram:not([data-own-classes~="warning"]) svg
+    :is(.node, .cluster, .statediagram-cluster).warning:not(.own-style)
+    :is(rect, polygon, circle, ellipse, path) {
+    fill: var(--sem-warning-fill) !important;
+    stroke: var(--sem-warning-edge) !important;
+}
+
+.mermaid-diagram:not([data-own-classes~="danger"]) svg
+    :is(.node, .cluster, .statediagram-cluster).danger:not(.own-style)
+    :is(rect, polygon, circle, ellipse, path) {
+    fill: var(--sem-danger-fill) !important;
+    stroke: var(--sem-danger-edge) !important;
+    stroke-width: 2px !important;
+}
+
+.mermaid-diagram:not([data-own-classes~="info"]) svg
+    :is(.node, .cluster, .statediagram-cluster).info:not(.own-style)
+    :is(rect, polygon, circle, ellipse, path) {
+    fill: var(--sem-info-fill) !important;
+    stroke: var(--sem-info-edge) !important;
+}
+
+.mermaid-diagram:not([data-own-classes~="accent"]) svg
+    :is(.node, .cluster, .statediagram-cluster).accent:not(.own-style)
+    :is(rect, polygon, circle, ellipse, path) {
+    fill: var(--sem-accent-fill) !important;
+    stroke: var(--sem-accent-edge) !important;
+}
+
+.mermaid-diagram:not([data-own-classes~="muted"]) svg
+    :is(.node, .cluster, .statediagram-cluster).muted:not(.own-style)
+    :is(rect, polygon, circle, ellipse, path) {
+    fill: var(--sem-muted-fill) !important;
+    stroke: var(--sem-muted-edge) !important;
+    stroke-dasharray: 5 3 !important;
+}
+
+.mermaid-diagram:not([data-own-classes~="success"]) svg
+    :is(.node, .cluster, .statediagram-cluster).success:not(.own-style)
+    :is(text, tspan),
+.mermaid-diagram:not([data-own-classes~="warning"]) svg
+    :is(.node, .cluster, .statediagram-cluster).warning:not(.own-style)
+    :is(text, tspan),
+.mermaid-diagram:not([data-own-classes~="danger"]) svg
+    :is(.node, .cluster, .statediagram-cluster).danger:not(.own-style)
+    :is(text, tspan),
+.mermaid-diagram:not([data-own-classes~="info"]) svg
+    :is(.node, .cluster, .statediagram-cluster).info:not(.own-style)
+    :is(text, tspan),
+.mermaid-diagram:not([data-own-classes~="accent"]) svg
+    :is(.node, .cluster, .statediagram-cluster).accent:not(.own-style)
+    :is(text, tspan) {
+    fill: var(--sem-ink) !important;
+}
+
+.mermaid-diagram:not([data-own-classes~="muted"]) svg
+    :is(.node, .cluster, .statediagram-cluster).muted:not(.own-style)
+    :is(text, tspan) {
+    fill: var(--sem-muted-ink) !important;
+}
+
 /* @section: tables
    Each table is wrapped in ``.tbl-scroll`` (by the converter), which carries the
    card framing -- border, radius, shadow -- and clips the table's square corners

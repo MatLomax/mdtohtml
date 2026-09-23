@@ -255,6 +255,37 @@ flowchart LR
 ```
 ````
 
+### Semantic node colours
+
+In flowchart, state and class diagrams, colour usually means status. Every theme
+ships six semantic classes you can put on a node, a flowchart subgraph or a
+composite state without writing a `classDef`:
+
+| Class | Meaning | Look |
+|-------|---------|------|
+| `success` | done, happy path, passing | green |
+| `warning` | caution, degraded, manual step | amber |
+| `danger` | failure, error, blocked | red, heavier border |
+| `info` | external system, informational | teal |
+| `accent` | the focus: new, changed, "look here" | violet |
+| `muted` | out of scope, deprecated, optional | grey, dashed border |
+
+````markdown
+```mermaid
+flowchart LR
+    A[Build]:::info --> B{Tests pass?}:::warning
+    B -->|yes| C[Deploy]:::success
+    B -->|no| D[Rollback]:::danger
+```
+````
+
+Subgraphs and states take `class S1 danger`; class diagrams use
+`class Legacy:::muted`. The colours follow the page's light/dark scheme. Your
+own styling takes precedence: a `classDef` of your own with the same name
+replaces the built-in one, and an element you style by hand with a `style`
+statement keeps exactly that style. A semantic class does win over a
+`classDef default`, just as any explicitly assigned class does in mermaid.
+
 ## Third-party licenses
 
 mdtohtml is MIT-licensed and relies on several third-party components. The

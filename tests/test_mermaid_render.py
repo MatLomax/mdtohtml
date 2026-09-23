@@ -596,3 +596,208 @@ class TestFrontmatterTitle:
         assert '<span class="mh-left">Pipe Test</span>' in html
         assert '<span class="mh-right">v9</span>' in html
         assert "<svg" in html
+
+
+# ── Semantic node classes ──
+
+_SEMANTIC = ("success", "warning", "danger", "info", "accent", "muted")
+
+
+class TestOwnClasses:
+    def test_author_classdef_names_are_listed_on_the_wrapper(self) -> None:
+        html = render_mermaid(
+            "flowchart LR\n  A:::success --> B\n"
+            "  classDef success,warn fill:#f00\n  classDef zeta fill:#0f0"
+        )
+        assert 'class="mermaid-diagram mermaid-structural" data-own-classes="success warn zeta"' in html
+
+    def test_no_classdef_means_no_attribute(self) -> None:
+        html = render_mermaid("flowchart LR\n  A:::danger --> B")
+        assert "data-own-classes" not in html
+
+    def test_semantic_class_lands_on_the_node_without_a_classdef(self) -> None:
+        # The theme keys on mermaid stamping the class onto the node group.
+        for src, cls in (
+            ("flowchart LR\n  A[x]:::danger --> B", "danger"),
+            ("stateDiagram-v2\n  [*] --> Idle\n  class Idle success", "success"),
+            ("classDiagram\n  class Foo:::muted\n  Foo <|-- Bar", "muted"),
+        ):
+            html = render_mermaid(src)
+            assert re.search(rf'<g class="[^"]*\bnode\b[^"]*\b{cls}\b', html), src
+
+
+class TestSemanticPrecedence:
+    def test_semicolon_separated_classdef_is_listed(self) -> None:
+        html = render_mermaid("flowchart LR\n  A:::info --> B; classDef info fill:#f00")
+        assert 'data-own-classes="info"' in html
+
+    def test_classdef_default_no_longer_reaches_a_semantic_node(self) -> None:
+        html = render_mermaid(
+            "flowchart LR\n  A[x]:::success --> B[y]\n"
+            "  classDef default fill:#333,stroke:#999,color:#fff"
+        )
+        # The id-scoped default rules skip semantic-classed nodes...
+        assert ".default:not(.success,.warning,.danger,.info,.accent,.muted) rect{" in html
+        # ...and the default's inlined !important styles are gone from the
+        # semantic node but kept on the plain one.
+        a_start = re.search(r'id="gd\d+-flowchart-A-', html).start()
+        b_start = re.search(r'id="gd\d+-flowchart-B-', html).start()
+        a_node = html[a_start:b_start] if a_start < b_start else html[a_start:]
+        b_node = html[b_start:]
+        assert "!important" not in a_node.split("</g></g></g>", 1)[0]
+        assert 'style="fill:#333 !important' in b_node
+
+    @staticmethod
+    def _group(html: str, name: str) -> tuple[str, str]:
+        """Return (opening tag, full markup) of flowchart node *name*."""
+        m = re.search(rf'<g class="[^"]*"[^>]*id="gd\d+-flowchart-{re.escape(name)}-\d+"[^>]*>', html)
+        assert m, name
+        depth, i = 0, m.start()
+        for t in re.finditer(r"<g\b|</g>", html[i:]):
+            depth += 1 if t.group(0) == "<g" else -1
+            if depth == 0:
+                return m.group(0), html[i : i + t.end()]
+        raise AssertionError(name)
+
+    def test_other_author_class_does_not_disable_the_semantic_colour(self) -> None:
+        # ``big``'s styles are inlined by mermaid; that is not a hand ``style``.
+        html = render_mermaid(
+            "flowchart LR\n  A[x]:::success --> B\n  class A big\n"
+            "  classDef big stroke-width:6px,font-weight:bold"
+        )
+        tag, _ = self._group(html, "A")
+        assert "own-style" not in tag
+
+    def test_default_is_dropped_but_other_classes_kept(self) -> None:
+        html = render_mermaid(
+            "flowchart LR\n  A[x]:::success --> B[y]\n  class A big\n"
+            "  classDef big stroke-width:6px,font-weight:bold\n"
+            "  classDef default fill:#333,stroke:#999,color:#fff"
+        )
+        _, a = self._group(html, "A")
+        assert "#333" not in a and "#999" not in a and "#fff" not in a
+        assert "stroke-width:6px" in a
+        assert "font-weight:bold" in a
+        _, b = self._group(html, "B")
+        assert "fill:#333" in b
+
+    @pytest.mark.parametrize(
+        ("hot", "default", "kept"),
+        [
+            # Another class's value that happens to equal the default's is still
+            # that class's, so it stays.
+            ("fill:#333", "fill:#333,stroke:#999", "fill:#333"),
+            ("fill:#f00", "color:#f00", "fill:#f00"),
+        ],
+    )
+    def test_other_class_keeps_values_that_coincide_with_default(
+        self, hot: str, default: str, kept: str
+    ) -> None:
+        html = render_mermaid(
+            f"flowchart LR\n  A[x]:::success --> B\n  class A hot\n"
+            f"  classDef hot {hot}\n  classDef default {default}"
+        )
+        _, a = self._group(html, "A")
+        rect = re.search(r"<rect[^>]*label-container[^>]*>", a).group(0)
+        assert f"{kept} !important" in rect
+
+    def test_default_in_a_classdef_name_list_is_recognised(self) -> None:
+        html = render_mermaid(
+            "flowchart LR\n  A[x]:::success --> B[y]\n"
+            "  classDef default,other fill:#333,stroke:#999,color:#fff"
+        )
+        _, a = self._group(html, "A")
+        assert "#333" not in a and "#fff" not in a
+        _, b = self._group(html, "B")
+        assert "fill:#333" in b
+
+    def test_mermaid_own_inline_styles_are_untouched(self) -> None:
+        html = render_mermaid(
+            "flowchart LR\n  A[x]:::success --> B\n  classDef default stroke:#999"
+        )
+        _, a = self._group(html, "A")
+        assert 'style="stroke: none"' in a
+
+    def test_style_match_is_exact_on_hyphenated_ids(self) -> None:
+        html = render_mermaid(
+            "flowchart LR\n  AB-A[x]:::success --> A[y]:::danger\n"
+            "  style A fill:#ff0\n  classDef default fill:#333"
+        )
+        tag_aba, aba = self._group(html, "AB-A")
+        tag_a, _ = self._group(html, "A")
+        assert "own-style" not in tag_aba
+        assert "#333" not in aba
+        assert "own-style" in tag_a
+
+    def test_hand_styled_semantic_node_keeps_its_inline_style(self) -> None:
+        html = render_mermaid(
+            "flowchart LR\n  I[s]:::danger --> B\n  style I fill:#ff0,color:#000\n"
+            "  classDef default fill:#333"
+        )
+        tag, node = self._group(html, "I")
+        assert "fill:#ff0 !important" in node
+        assert "own-style" in tag
+
+    def test_own_semantic_classdef_keeps_mermaids_default_handling(self) -> None:
+        # The author defined ``success`` themselves: nothing is narrowed for it.
+        html = render_mermaid(
+            "flowchart LR\n  A[x]:::success --> B\n"
+            "  classDef default fill:#333\n  classDef success fill:#0f0"
+        )
+        assert ".default:not(.warning,.danger,.info,.accent,.muted)" in html
+
+    def test_subgraph_and_composite_state_carry_the_class(self) -> None:
+        html = render_mermaid(
+            "flowchart LR\n  subgraph S1 [G]\n    A --> B\n  end\n  class S1 danger"
+        )
+        assert '<g class="cluster danger"' in html
+        html = render_mermaid(
+            "stateDiagram-v2\n  state Comp {\n    a --> b\n  }\n  [*] --> Comp\n  class Comp warning"
+        )
+        classes = re.findall(r'<g class="([^"]*statediagram-cluster[^"]*)"', html)
+        assert any("warning" in c.split() for c in classes)
+
+
+class TestSemanticThemeCss:
+    @pytest.mark.parametrize("theme", ["default", "dark", "print", "report"])
+    def test_every_theme_colours_every_semantic_class(self, theme: str) -> None:
+        from mdtohtml.converter import load_theme_css
+
+        css = load_theme_css(theme)
+        for name in _SEMANTIC:
+            sel = (
+                f'.mermaid-diagram:not([data-own-classes~="{name}"]) svg\n'
+                f"    :is(.node, .cluster, .statediagram-cluster).{name}"
+                ":not(.own-style)\n"
+            )
+            assert f"{sel}    :is(rect, polygon, circle, ellipse, path) {{" in css
+            assert f"{sel}    :is(text, tspan)" in css
+            assert f"--sem-{name}-fill:" in css
+            assert f"--sem-{name}-edge:" in css
+        assert "stroke-width: 2px !important" in css
+        assert "stroke-dasharray: 5 3 !important" in css
+
+    @pytest.mark.parametrize("theme", ["default", "dark", "print", "report"])
+    def test_semantic_palette_contrast(self, theme: str) -> None:
+        """Each node's border clears 3:1 against its fill and its label 4.5:1,
+        in every palette the theme declares (the report theme has two)."""
+        from mdtohtml.converter import load_theme_css
+
+        css = load_theme_css(theme)
+        section = css[css.index("@section: mermaid-semantic"):]
+        palettes = re.findall(r"\.mermaid-diagram \{([^}]*)\}", section)
+        assert palettes
+
+        def ratio(a: str, b: str) -> float:
+            la = colour.relative_luminance(colour.parse_hex(a))
+            lb = colour.relative_luminance(colour.parse_hex(b))
+            hi, lo = max(la, lb), min(la, lb)
+            return (hi + 0.05) / (lo + 0.05)
+
+        for body in palettes:
+            tok = dict(re.findall(r"(--sem-[\w-]+):\s*(#[0-9a-fA-F]{6})", body))
+            for name in _SEMANTIC:
+                fill = tok[f"--sem-{name}-fill"]
+                assert ratio(tok[f"--sem-{name}-edge"], fill) >= 3.0, (theme, name)
+                ink = tok["--sem-muted-ink" if name == "muted" else "--sem-ink"]
+                assert ratio(ink, fill) >= 4.5, (theme, name)

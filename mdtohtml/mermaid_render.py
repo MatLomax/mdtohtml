@@ -359,6 +359,182 @@ def _retune_classdef_for_dark(svg: str) -> str:
     return svg
 
 
+# A ``classDef`` statement: ``classDef name[,name...] styles``, at the start of
+# a line or after a ``;`` statement separator. Each name the author defines is
+# reported on the diagram wrapper so a theme's built-in semantic class of the
+# same name (``success``, ``danger``, ...) steps aside.
+_CLASSDEF_STMT_RE = re.compile(r"(?:^|;)[ \t]*classDef[ \t]+([\w,-]+)", re.M)
+
+# The semantic class names themes colour (see the themes' ``mermaid-semantic``
+# section).
+SEMANTIC_CLASSES = ("success", "warning", "danger", "info", "accent", "muted")
+
+
+def _own_classes(source: str) -> list[str]:
+    """Return the class names the diagram *source* defines with ``classDef``.
+
+    Sorted and de-duplicated so the wrapper attribute is stable. ``default`` is
+    mermaid's restyle-every-node hook, not a class an author puts on a node, so
+    it is kept like any other name (a theme simply never keys on it).
+    """
+    names: set[str] = set()
+    for match in _CLASSDEF_STMT_RE.finditer(source):
+        names.update(n for n in match.group(1).split(",") if n)
+    return sorted(names)
+
+
+def _narrow_default_classdef(svg: str, own: list[str]) -> str:
+    """Keep an author ``classDef default`` off semantic-classed elements.
+
+    Mermaid tags every node ``default`` and emits ``classDef default`` as
+    id-scoped rules (``#gd1 .default rect{...}``) that outrank any theme rule, so
+    a ``:::success`` node would keep the default look while taking the theme's
+    semantic label colour. In mermaid an explicitly assigned class beats
+    ``default``; this restores that for the semantic classes the author has not
+    redefined, by narrowing each ``.default`` selector with
+    ``:not(.success,...)``. Returns *svg* unchanged when there is nothing to do.
+    """
+    semantic = [name for name in SEMANTIC_CLASSES if name not in own]
+    if "default" not in own or not semantic:
+        return svg
+    narrowed = ".default:not(" + ",".join("." + n for n in semantic) + ")"
+
+    def _style(m: "re.Match[str]") -> str:
+        body = re.sub(r"(#[\w-]+\s+)\.default(?![\w-])", r"\1" + narrowed, m.group(1))
+        return "<style>" + body + "</style>"
+
+    return re.sub(r"<style>(.*?)</style>", _style, svg, flags=re.S)
+
+
+# A ``style <id> ...`` statement: a per-element style the author set by hand,
+# which keeps priority over the theme's semantic colours.
+_STYLE_STMT_RE = re.compile(r"(?:^|;)[ \t]*style[ \t]+([\w-]+)", re.M)
+
+# A full ``classDef name[,name...] decls`` statement: the names and the
+# declarations mermaid applies (and, for ``default``, inlines on every element).
+_CLASSDEF_FULL_RE = re.compile(r"(?:^|;)[ \t]*classDef[ \t]+([\w,-]+)[ \t]+([^;\n]+)", re.M)
+
+# The opening tag of a node/cluster group carrying classes and an id, and the
+# element name inside that id: ``gd1-flowchart-A-0`` / ``gd2-state-Idle-1`` /
+# ``gd3-classId-Foo-0`` for nodes, ``gd1-S1`` for a subgraph.
+_GROUP_OPEN_RE = re.compile(r'<g class="([^"]*)"([^>]*?)\bid="([^"]*)"([^>]*)>')
+_ELEMENT_ID_RE = re.compile(r"^gd\d+-(?:(?:flowchart|state|classId)-(.+)-\d+|(.+))$")
+_GROUP_KINDS = frozenset({"node", "cluster", "statediagram-cluster"})
+_STYLED_TAG_RE = re.compile(r'<(\w+)([^>]*?)(\s+style=")([^"]*)(")')
+
+# Class a semantic-classed element gets when a ``style`` statement targets it;
+# the themes' semantic rules skip it, so the hand-set style stands entirely.
+OWN_STYLE_CLASS = "own-style"
+
+
+def _group_end(svg: str, start: int) -> int:
+    """Return the index just past the ``</g>`` closing the ``<g>`` at *start*."""
+    depth = 0
+    for m in re.finditer(r"<g\b|</g>", svg[start:]):
+        depth += 1 if m.group(0) == "<g" else -1
+        if depth == 0:
+            return start + m.end()
+    return len(svg)
+
+
+def _classdef_props(source: str) -> dict[str, set[str]]:
+    """Map each ``classDef`` name in *source* to the CSS properties it sets."""
+    props: dict[str, set[str]] = {}
+    for names, decls in _CLASSDEF_FULL_RE.findall(source):
+        keys = {d.partition(":")[0].strip().lower() for d in decls.split(",") if ":" in d}
+        for name in filter(None, names.split(",")):
+            props.setdefault(name, set()).update(keys)
+    return props
+
+
+def _drop_default_decls(tag: str, style: str, default: set[str], kept_props: set[str]) -> str:
+    """Remove the declarations ``classDef default`` supplied from an inline *style*.
+
+    Mermaid merges every class on an element property by property into one
+    inline ``!important`` style, a later class replacing the default's value. So
+    such a declaration came from the default exactly when the default sets that
+    property and none of the element's other classes (*kept_props*) does. On
+    label ``<text>`` the inline ``fill`` is mermaid's rendering of ``color``.
+    """
+    kept = []
+    for decl in style.split(";"):
+        prop = decl.partition(":")[0].strip().lower()
+        if not prop:
+            continue
+        if "!important" not in decl:
+            # Mermaid's own inline styling (e.g. a label background's
+            # ``stroke: none``), not a class it inlined.
+            kept.append(decl.strip())
+            continue
+        source_prop = "color" if tag == "text" and prop == "fill" else prop
+        if source_prop in default and source_prop not in kept_props:
+            continue
+        kept.append(decl.strip())
+    return ";".join(kept)
+
+
+def _resolve_semantic_groups(svg: str, source: str, own: list[str]) -> str:
+    """Settle author styling against the themes' semantic colours, per element.
+
+    For each node/subgraph/composite state carrying a semantic class the author
+    has not redefined with ``classDef``:
+
+    * one a ``style`` statement targets gets the :data:`OWN_STYLE_CLASS`, so the
+      theme leaves it entirely to the hand-set style;
+    * otherwise, if the author has a ``classDef default``, the default's inlined
+      declarations are removed from it -- mermaid inlines ``classDef default``
+      on every element as ``!important`` styles no stylesheet can beat, while in
+      mermaid an explicitly assigned class wins over ``default``. A property any
+      other class on the element sets is kept (see :func:`_drop_default_decls`).
+
+    The element's name is read exactly from its id, so ``style A`` never matches
+    a node ``AB-A``. Runs on the raw render, before any colour rewriting.
+    """
+    semantic = {name for name in SEMANTIC_CLASSES if name not in own}
+    if not semantic:
+        return svg
+    styled = set(_STYLE_STMT_RE.findall(source))
+    classdefs = _classdef_props(source)
+    default = classdefs.get("default", set())
+    if not styled and not default:
+        return svg
+
+    out: list[str] = []
+    pos = 0
+    for m in _GROUP_OPEN_RE.finditer(svg):
+        if m.start() < pos:
+            continue  # inside a group already rewritten
+        classes = m.group(1).split()
+        if not (_GROUP_KINDS.intersection(classes) and semantic.intersection(classes)):
+            continue
+        ident = _ELEMENT_ID_RE.match(m.group(3))
+        name = (ident.group(1) or ident.group(2)) if ident else None
+        if name in styled:
+            out.append(svg[pos : m.start()])
+            out.append(
+                f'<g class="{m.group(1).rstrip()} {OWN_STYLE_CLASS}"'
+                f'{m.group(2)}id="{m.group(3)}"{m.group(4)}>'
+            )
+            pos = m.end()
+        elif default:
+            kept_props: set[str] = set()
+            for cls in classes:
+                if cls != "default":
+                    kept_props |= classdefs.get(cls, set())
+
+            def _restyle(sm: "re.Match[str]") -> str:
+                kept = _drop_default_decls(sm.group(1), sm.group(4), default, kept_props)
+                attr = f"{sm.group(3)}{kept}{sm.group(5)}" if kept else ""
+                return f"<{sm.group(1)}{sm.group(2)}{attr}"
+
+            end = _group_end(svg, m.start())
+            out.append(svg[pos : m.start()])
+            out.append(_STYLED_TAG_RE.sub(_restyle, svg[m.start() : end]))
+            pos = end
+    out.append(svg[pos:])
+    return "".join(out)
+
+
 def _diagram_class(svg: str) -> str:
     """Return the extra wrapper class for *svg*, keyed on its diagram family.
 
@@ -421,6 +597,11 @@ def render_mermaid(source: str, *, dark: bool = False, adaptive: bool = False) -
     # family class (structural/categorical) lets the theme recolour or darken it.
     # The wrapper is trusted, post-``nh3.clean`` output alongside the SVG it holds.
     cls = _diagram_class(svg)
+    # Author ``classDef`` names, so a theme's semantic colours of the same name
+    # defer to the author's own definition; then settle ``style`` statements and
+    # ``classDef default`` against the semantic classes, on the raw colours.
+    own = _own_classes(render_source)
+    svg = _resolve_semantic_groups(svg, render_source, own)
     if cls == " mermaid-structural":
         # On an auto light/dark theme, give author classDef colours a dark-mode
         # variant before softening so the retune reads the ``!important`` markers.
@@ -429,7 +610,9 @@ def render_mermaid(source: str, *, dark: bool = False, adaptive: bool = False) -
         # Let the theme's recolour reach mermaid's id-scoped ``!important`` markers.
         svg = _soften_structural_colours(svg)
     header = _header_html(title) if title else ""
-    return f'<div class="mermaid-diagram{cls}">{header}{svg}</div>'
+    svg = _narrow_default_classdef(svg, own)
+    own_attr = f' data-own-classes="{_html.escape(" ".join(own))}"' if own else ""
+    return f'<div class="mermaid-diagram{cls}"{own_attr}>{header}{svg}</div>'
 
 
 def _degrade_fragment(source: str, error: BaseException) -> str:

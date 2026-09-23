@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `hl_lines` and with `linenums` (a wrapped block numbers its lines inline
   so the numbers stay aligned), works in fences nested in lists and callouts,
   and is ignored on `mermaid` fences.
+- Semantic colours for mermaid flowchart, state and class diagrams in every
+  theme: `success`, `warning`, `danger`, `info`, `accent` and `muted` work on
+  any node, flowchart subgraph or composite state (`A[Deploy]:::success`,
+  `class S1 danger`) with no `classDef`, follow the light/dark scheme, and give
+  `danger` a heavier and `muted` a dashed border so the meaning survives
+  without colour. The author's own `classDef` of the same name, or a `style`
+  statement on the element, takes precedence; a semantic class wins over
+  `classDef default`, as an assigned class does in mermaid.
 
 ### Changed
 

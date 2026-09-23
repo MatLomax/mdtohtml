@@ -437,6 +437,37 @@ to its palette and adapts author `classDef` colours to dark mode, keeps
 categorical diagrams (pie, gantt) on their own hues, and leaves any other family
 on a plain card --- all following the reader's colour scheme.
 
+Colour in a flowchart usually carries meaning, so six semantic classes work on
+any node, subgraph or composite state with no `classDef`: `success`, `warning`,
+`danger` (heavier border), `info`, `accent` (the focus) and `muted` (dashed
+border). Subgraphs and states take `class S1 danger`; class diagrams
+`class Legacy:::muted`. A `classDef` of your own with the same name, or a `style`
+statement on the element, wins.
+
+````markdown
+```mermaid
+---
+title: Release gate | semantic classes
+---
+flowchart LR
+  A[Scope]:::muted --> B[Build]:::info --> C{Tests pass?}:::warning
+  C -->|yes| D[Ship]:::success
+  C -->|no| E[Roll back]:::danger
+  B --> F[New flag]:::accent
+```
+````
+
+```mermaid
+---
+title: Release gate | semantic classes
+---
+flowchart LR
+  A[Scope]:::muted --> B[Build]:::info --> C{Tests pass?}:::warning
+  C -->|yes| D[Ship]:::success
+  C -->|no| E[Roll back]:::danger
+  B --> F[New flag]:::accent
+```
+
 ^ Images
 ## Images
 
