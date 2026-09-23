@@ -1,0 +1,61 @@
+name: release
+
+# Changelog-driven release orchestrator. On a push to main it reads the first
+# versioned heading in CHANGELOG.md; if no matching tag exists yet it creates
+# and pushes one, then calls the reusable build workflow to build and publish
+# that release in the same run. Because the release is triggered by a
+# workflow_call (not by the tag push event), the tag can be pushed with the
+# default GITHUB_TOKEN -- the token's "events don't retrigger workflows" rule
+# does not block us, so no PAT is needed. Cutting a release is therefore just:
+# move the [Unreleased] changelog entries under a new "## [X.Y.Z]" heading and
+# push to main.
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      # The version to release, or "" when the top changelog version is already
+      # tagged (nothing to do).
+      release_version: ${{ steps.detect.outputs.release_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags, so an existing release tag is visible
+
+      - name: Detect changelog version and tag if new
+        id: detect
+        run: |
+          set -euo pipefail
+          # The first versioned heading, skipping a leading "## [Unreleased]".
+          version="$(grep -m1 -oE '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || true)"
+          if [ -z "$version" ]; then
+            echo "No versioned changelog heading found; nothing to release."
+            echo "release_version=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          tag="v$version"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "Tag $tag already exists; nothing to release."
+            echo "release_version=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "New version $version -> creating and pushing $tag"
+          git tag "$tag"
+          git push origin "$tag"
+          echo "release_version=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: detect
+    permissions:
+      contents: write
+    secrets: inherit
+    uses: ./.github/workflows/build.yml
+    with:
+      release_version: ${{ needs.detect.outputs.release_version }}

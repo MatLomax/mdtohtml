@@ -1,11 +1,20 @@
 name: build
 
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
   pull_request:
   workflow_dispatch:
+  # Manual escape hatch: pushing a v* tag by hand still cuts a release.
+  push:
+    tags: ["v*"]
+  # Called by release.yml, the changelog-driven orchestrator. A non-empty
+  # release_version turns this run into a release for that version; empty is a
+  # plain CI build.
+  workflow_call:
+    inputs:
+      release_version:
+        description: "Version to release (e.g. 0.3.2); empty for a CI-only build"
+        type: string
+        default: ""
 
 jobs:
   build:
@@ -127,30 +136,32 @@ jobs:
       # the release instead of shipping a binary that misreports itself and nags
       # `update --check`. --themes-dir points at the in-tree themes so the check
       # does not depend on a themes/ folder beside the freshly built binary.
-      - name: Assert binary self-reports the tag version (bash)
-        if: runner.os != 'Windows' && startsWith(github.ref, 'refs/tags/v')
+      - name: Assert binary self-reports the release version (bash)
+        if: runner.os != 'Windows' && (inputs.release_version != '' || startsWith(github.ref, 'refs/tags/v'))
         shell: bash
         run: |
           set -euo pipefail
-          expected="${GITHUB_REF_NAME#v}"
+          expected="${{ inputs.release_version }}"
+          [ -n "$expected" ] || expected="${GITHUB_REF_NAME#v}"
           reported="$(dist/mdtohtml --themes-dir mdtohtml/themes --version | awk '{print $2}')"
           if [ "$reported" != "$expected" ]; then
-            echo "ERROR: binary reports version '$reported' but tag is '$expected'" >&2
+            echo "ERROR: binary reports version '$reported' but expected '$expected'" >&2
             exit 1
           fi
-          echo "version OK ($reported matches tag $GITHUB_REF_NAME)"
+          echo "version OK ($reported matches $expected)"
 
-      - name: Assert binary self-reports the tag version (pwsh)
-        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/v')
+      - name: Assert binary self-reports the release version (pwsh)
+        if: runner.os == 'Windows' && (inputs.release_version != '' || startsWith(github.ref, 'refs/tags/v'))
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $expected = "$env:GITHUB_REF_NAME" -replace '^v', ''
+          $expected = "${{ inputs.release_version }}"
+          if (-not $expected) { $expected = "$env:GITHUB_REF_NAME" -replace '^v', '' }
           $reported = (& "dist/mdtohtml.exe" --themes-dir mdtohtml/themes --version).Split(' ')[1]
           if ($reported -ne $expected) {
-            Write-Error "binary reports version '$reported' but tag is '$expected'"
+            Write-Error "binary reports version '$reported' but expected '$expected'"
           }
-          Write-Host "version OK ($reported matches tag $env:GITHUB_REF_NAME)"
+          Write-Host "version OK ($reported matches $expected)"
 
       # The themeless binary, run with no themes/ beside it and no --themes-dir,
       # must fail cleanly (not crash) and point at `update --themes`. Runs
@@ -229,13 +240,21 @@ jobs:
 
   release:
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: ${{ inputs.release_version != '' || startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve release version
+        id: ver
+        run: |
+          set -euo pipefail
+          version="${{ inputs.release_version }}"
+          [ -n "$version" ] || version="${GITHUB_REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Download all release zips
         uses: actions/download-artifact@v4
@@ -244,10 +263,10 @@ jobs:
           pattern: mdtohtml-*
           merge-multiple: true
 
-      - name: Extract changelog section for this tag
+      - name: Extract changelog section for this version
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${{ steps.ver.outputs.version }}"
           awk -v ver="$VERSION" '
             index($0, "## [" ver "]") == 1 { cap = 1; next }
             cap && (/^## \[/ || /^\[[^]]*\]: /) { cap = 0 }
@@ -265,6 +284,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.ref_name }}
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: v${{ steps.ver.outputs.version }}
           body_path: release_notes.md
           files: artifacts/mdtohtml-*.zip
