@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- A `{-toc}` heading opt-out: appending `{-toc}` to a heading line keeps that
+  heading out of the table-of-contents sidebar. The heading still renders in
+  full; only its anchor id is dropped (the TOC lists only headings that carry an
+  id). A `{-toc}` anywhere other than the end of a heading line is left as
+  literal text.
+
 ## [0.3.1] - 2026-09-21
 
 ### Fixed

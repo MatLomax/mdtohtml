@@ -554,6 +554,66 @@ def preprocess_keyed_tables(md_text: str) -> str:
     return _restore_code("\n".join(out), placeholders)
 
 
+# ── ToC Opt-Out ──
+
+
+# A ``{-toc}`` marker appended to a heading line keeps that heading out of the
+# table of contents. The heading still renders in full; only its anchor ``id``
+# is dropped, and the TOC is built solely from headings that carry an ``id``
+# (the hero ``<h1>`` is already excluded the same way). A ``{-toc}`` anywhere
+# other than the end of a heading line is left as literal text.
+_TOC_OPTOUT_HEADING_RE = re.compile(r"^(#{1,6} .*?)[ \t]*\{-toc\}[ \t]*$")
+
+# The ``<p>{-toc}</p>`` marker paragraph the lifted marker converts to, plus the
+# opening tag of the heading it now sits directly above (only whitespace may
+# intervene).
+_TOC_OPTOUT_RE = re.compile(r"<p>\{-toc\}</p>\s*(<h[1-6]\b[^>]*>)", re.S)
+
+# An ``id="..."`` attribute on a heading's opening tag.
+_HEADING_ID_RE = re.compile(r'\s+id="[^"]*"')
+
+
+def preprocess_toc_optout(md_text: str) -> str:
+    """Lift a trailing ``{-toc}`` marker off a heading into a marker paragraph.
+
+    A heading line ending in ``{-toc}`` -- ``## Title {-toc}`` -- is rewritten to
+    a ``{-toc}`` marker paragraph directly above the cleaned heading, which
+    :func:`_apply_toc_optout` consumes post-render to strip the heading's ``id``.
+    Lifting it (rather than editing the rendered heading) keeps the heading's
+    inline Markdown intact. A ``{-toc}`` that is not at the end of a heading line
+    is left untouched -- it renders as the literal text ``{-toc}``. Markers
+    inside code are protected.
+    """
+    protected, placeholders = _protect_code(md_text)
+    lines = protected.split("\n")
+    out: list[str] = []
+    for line in lines:
+        m = _TOC_OPTOUT_HEADING_RE.match(line)
+        if m:
+            # Lift the marker above the cleaned heading, with a blank line so it
+            # is its own paragraph rather than folded onto the heading.
+            out.append("{-toc}")
+            out.append("")
+            out.append(m.group(1).rstrip())
+        else:
+            out.append(line)
+    return _restore_code("\n".join(out), placeholders)
+
+
+def _apply_toc_optout(html: str) -> str:
+    """Consume a ``{-toc}`` marker and strip the following heading's ``id``.
+
+    The heading keeps its text and styling but loses its anchor, so
+    :func:`_extract_headings` -- which lists only headings that carry an ``id``
+    -- leaves it out of the table of contents. A ``<p>{-toc}</p>`` not
+    immediately above a heading is left in place as literal text.
+    """
+    def _strip(m: re.Match[str]) -> str:
+        return _HEADING_ID_RE.sub("", m.group(1), count=1)
+
+    return _TOC_OPTOUT_RE.sub(_strip, html)
+
+
 # ── Math Delimiter Rewriting ──
 
 # pymdownx.arithmatex generic mode wraps each expression in an
@@ -1012,6 +1072,9 @@ def md_to_html(
         # Step 1f: Convert a ``::: footer`` container to a ``<footer>`` region.
         md_text = preprocess_footer(md_text)
 
+        # Step 1g: Lift a trailing ``{-toc}`` opt-out marker off a heading.
+        md_text = preprocess_toc_optout(md_text)
+
         # Step 2: Convert markdown to HTML
         md_converter = markdown.Markdown(
             extensions=_MD_EXTENSIONS,
@@ -1034,6 +1097,10 @@ def md_to_html(
         # Step 3c: Move each highlighted line's terminating newline outside its
         # ``.hll`` span so consecutive banded lines break onto separate rows.
         html = _fix_hll_line_breaks(html)
+
+        # Step 3d: Consume ``{-toc}`` markers and strip the marked headings' ids
+        # so they stay out of the table of contents.
+        html = _apply_toc_optout(html)
 
         # Step 4: Sanitise with nh3
         html = nh3.clean(

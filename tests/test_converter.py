@@ -9,6 +9,7 @@ import pytest
 
 from mdtohtml.converter import (
     TOC_JS,
+    _apply_toc_optout,
     _build_toc_nav,
     _extract_headings,
     _render_inline,
@@ -23,6 +24,7 @@ from mdtohtml.converter import (
     preprocess_chips,
     preprocess_footer,
     preprocess_keyed_tables,
+    preprocess_toc_optout,
     preprocess_callouts,
     preprocess_section_kickers,
     preprocess_wikilinks,
@@ -1418,6 +1420,73 @@ class TestMdToHtmlKeyedTable:
     def test_report_css_styles_keyed_key_column(self) -> None:
         css = load_theme_css("report")
         assert ".tbl-scroll.keyed tbody td:first-child" in css
+
+
+class TestApplyTocOptout:
+    def test_marker_strips_following_heading_id(self) -> None:
+        html = _apply_toc_optout('<p>{-toc}</p><h2 id="status">Status</h2>')
+        assert html == "<h2>Status</h2>"
+
+    def test_marker_strips_id_across_whitespace(self) -> None:
+        html = _apply_toc_optout('<p>{-toc}</p>\n<h3 id="a">A</h3>')
+        assert html == "<h3>A</h3>"
+
+    def test_marker_without_heading_is_left_literal(self) -> None:
+        # A ``{-toc}`` paragraph not before a heading is left in place (renders
+        # as literal text), never dropped.
+        html = "<p>{-toc}</p><p>no heading</p>"
+        assert _apply_toc_optout(html) == html
+
+    def test_only_the_marked_heading_loses_its_id(self) -> None:
+        html = _apply_toc_optout(
+            '<p>{-toc}</p><h2 id="hidden">Hidden</h2>'
+            '<h2 id="shown">Shown</h2>'
+        )
+        assert html == '<h2>Hidden</h2><h2 id="shown">Shown</h2>'
+
+
+class TestPreprocessTocOptout:
+    def test_trailing_marker_is_lifted_above_cleaned_heading(self) -> None:
+        result = preprocess_toc_optout("## Status {-toc}")
+        assert result == "{-toc}\n\n## Status"
+
+    def test_heading_without_marker_is_unchanged(self) -> None:
+        md = "## Status\n\nJust a paragraph."
+        assert preprocess_toc_optout(md) == md
+
+    def test_marker_not_at_heading_end_is_left_literal(self) -> None:
+        md = "A paragraph mentioning {-toc} inline."
+        assert preprocess_toc_optout(md) == md
+
+    def test_marker_inside_code_is_untouched(self) -> None:
+        md = "```\n## Not a heading {-toc}\n```"
+        assert preprocess_toc_optout(md) == md
+
+
+class TestMdToHtmlTocOptout:
+    def test_marked_heading_is_excluded_from_toc(self) -> None:
+        body = md_to_html("## Kept\n\n## Hidden {-toc}\n\nText.")
+        nav = _build_toc_nav(body)
+        assert "Kept" in nav
+        assert "Hidden" not in nav
+
+    def test_marked_heading_still_renders_without_an_anchor(self) -> None:
+        body = md_to_html("## Hidden {-toc}\n\nText.")
+        assert "<h2>Hidden</h2>" in body
+        assert "{-toc}" not in body
+
+    def test_marked_heading_keeps_its_inline_markdown(self) -> None:
+        body = md_to_html("## The *core* change {-toc}\n\nText.")
+        assert "<h2>The <em>core</em> change</h2>" in body
+
+    def test_unmarked_heading_keeps_its_id_and_toc_entry(self) -> None:
+        body = md_to_html("## Hidden {-toc}\n\n## Shown\n\nText.")
+        assert "<h2>Hidden</h2>" in body
+        assert '<h2 id="shown">Shown</h2>' in body
+
+    def test_marker_not_on_a_heading_stays_literal_end_to_end(self) -> None:
+        body = md_to_html("Prose mentioning {-toc} inline.")
+        assert "{-toc}" in body
 
 
 class TestMdToHtmlTableScroll:

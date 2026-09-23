@@ -13,7 +13,8 @@ standalone HTML.
 - **Extended Markdown**: callouts (`> [!note]`), wikilinks
   (`[[Page]]`, resolved to the `.html` sibling of each page), task lists,
   tables, footnotes, syntax highlighting, `~~del~~`, `==mark==`, and an
-  optional table-of-contents sidebar.
+  optional table-of-contents sidebar (append `{-toc}` to a heading to keep it
+  out of the sidebar).
 - **Themeable** via drop-in CSS files — add a theme without rebuilding
   anything. Ships a `report` theme (a warm, AA-accessible, auto light/dark
   visual system) alongside `default`, `dark`, and `print`.
