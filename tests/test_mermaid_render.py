@@ -801,3 +801,12 @@ class TestSemanticThemeCss:
                 assert ratio(tok[f"--sem-{name}-edge"], fill) >= 3.0, (theme, name)
                 ink = tok["--sem-muted-ink" if name == "muted" else "--sem-ink"]
                 assert ratio(ink, fill) >= 4.5, (theme, name)
+
+
+class TestDiagramFontSize:
+    @pytest.mark.parametrize("dark", [False, True])
+    def test_labels_render_at_14px_and_boxes_fit_them(self, dark: bool) -> None:
+        html = render_mermaid("flowchart LR\n  A[Hello world] --> B{Decision}", dark=dark)
+        sizes = set(re.findall(r"font-size:\s*(\d+)px", html))
+        assert "14" in sizes
+        assert "16" not in sizes

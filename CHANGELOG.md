@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Diagram labels render at 14px instead of mermaid's 16px default, in every
+  theme; mermaid lays each diagram out around the smaller text, so boxes shrink
+  with it rather than the picture being scaled down. Sequence, gantt and pie
+  diagrams keep mermaid's own text sizes, which the bundled mermaid does not
+  let this setting change.
 - The `report` theme's table-of-contents sidebar styles nested entries to sit
   under their kicker-style parents: sentence case in the body font, hung off a
   thin guide rail, with deeper levels a step smaller. The active nested entry

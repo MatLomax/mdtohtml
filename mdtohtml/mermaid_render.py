@@ -35,10 +35,17 @@ from . import colour
 
 # Forwarded to mermaid.js ``initialize``. ``strict`` security sanitises every
 # label into escaped text; ``htmlLabels: false`` keeps mermaid emitting native
-# ``<text>`` labels so no ``<foreignObject>``/HTML leaks into the SVG.
+# ``<text>`` labels so no ``<foreignObject>``/HTML leaks into the SVG. The label
+# size is set here, below mermaid's 16px default, rather than by scaling the
+# rendered SVG, so mermaid lays every box out around the smaller text.
+# Sequence, gantt and pie diagrams size their text independently of this
+# setting (the bundled mermaid ignores even sequence's own font-size options),
+# so they keep mermaid's sizes.
+_MERMAID_FONT_SIZE = "14px"
 _MERMAID_CONFIG = {
     "securityLevel": "strict",
     "flowchart": {"htmlLabels": False},
+    "themeVariables": {"fontSize": _MERMAID_FONT_SIZE},
 }
 
 # Theme names passed to ``mermaidx.render``. Both themes emit a transparent SVG
